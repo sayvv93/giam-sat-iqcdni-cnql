@@ -2,12 +2,24 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Dashboard Kiểm Tra & Khắc Phục IQC</title>
+  <title>Dashboard Kiểm Tra & Khắc Phục IQC - Đồng Nai</title>
   <style>
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
-    h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
+    
+    /* Hiệu ứng tiêu đề chạy qua lại liên tục */
+    .marquee-container { overflow: hidden; white-space: nowrap; margin-bottom: 20px; background: #2c3e50; padding: 12px 0; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .marquee-text { display: inline-block; font-size: 22px; font-weight: bold; color: #white; color: #fff; text-transform: uppercase; padding-left: 100%; animation: marquee 15s linear infinite; }
+    @keyframes marquee {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(-100%, 0); }
+    }
+
     .container { max-width: 1300px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
     
+    .mode-switch-bar { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; }
+    .btn-mode { padding: 10px 20px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; background: #bdc3c7; color: #2c3e50; }
+    .btn-mode.active { background: #2980b9; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
     .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
     .card { background: #3498db; color: white; padding: 15px; border-radius: 6px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     .card h3 { margin: 0 0 5px 0; font-size: 14px; text-transform: uppercase; opacity: 0.9; }
@@ -16,20 +28,13 @@
     .card-danger { background: #e74c3c; }
     .card-success { background: #2ecc71; }
 
-    /* Cấu hình lưới hiển thị 3 khung cảnh báo */
-    .alert-container-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-    @media (max-width: 1100px) { .alert-container-grid { grid-template-columns: 1fr; } }
+    .alert-container-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+    @media (max-width: 900px) { .alert-container-grid { grid-template-columns: 1fr; } }
 
     .alert-section { background: #fadbd8; border-left: 5px solid #e74c3c; padding: 12px 15px; border-radius: 4px; }
     .alert-section h3 { margin: 0 0 8px 0; color: #c0392b; font-size: 15px; }
     .alert-list { margin: 0; padding-left: 20px; font-size: 13px; color: #922b21; }
     .alert-list li { margin-bottom: 4px; font-weight: bold; }
-
-    /* Khung cảnh báo tồn chưa xử lý riêng biệt */
-    .warning-pending-section { background: #fdebd0; border-left: 5px solid #e67e22; padding: 12px 15px; border-radius: 4px; }
-    .warning-pending-section h3 { margin: 0 0 8px 0; color: #d35400; font-size: 15px; }
-    .warning-pending-list { margin: 0; padding-left: 20px; font-size: 13px; color: #b9770e; }
-    .warning-pending-list li { margin-bottom: 4px; font-weight: bold; }
 
     .success-section { background: #d4efdf; border-left: 5px solid #2ecc71; padding: 12px 15px; border-radius: 4px; }
     .success-section h3 { margin: 0 0 8px 0; color: #196f3d; font-size: 15px; }
@@ -47,111 +52,182 @@
     th, td { border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 13px; vertical-align: middle; }
     th { background-color: #3498db; color: white; }
     tr:nth-child(even) { background-color: #f9f9f9; }
+    
+    /* Màu sắc đánh giá tỷ lệ */
+    .badge-rate-good { background: #e8f8f5; padding: 3px 8px; border-radius: 4px; color: #16a085; font-weight: bold; }
+    .badge-rate-bad { background: #fadbd8; padding: 3px 8px; border-radius: 4px; color: #c0392b; font-weight: bold; }
+    
+    /* Dòng Tổng hợp theo đối tác */
+    .partner-subtotal-row { background-color: #eaeded !important; font-weight: bold; color: #2c3e50; }
+
     select.action-sel { padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; }
     .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; transition: 0.2s; }
     .btn-iqc { background-color: #2ecc71; }
     .btn-iqc:hover { background-color: #27ae60; }
     .btn-kp { background-color: #e67e22; }
     .btn-kp:hover { background-color: #d35400; }
-    .hidden-row { display: none !important; }
     .hidden-cell { display: none !important; }
+    .view-container { display: none; }
+    .view-container.active { display: block; }
   </style>
 </head>
 <body>
 
   <div class="container">
-    <h2>📊 Dashboard Kiểm Tra & Khắc Phục IQC</h2>
-    
-    <!-- Khu vực hiển thị 3 khung cảnh báo & tổng hợp -->
-    <div class="alert-container-grid">
-      <div class="alert-section" id="alert-section">
-        <h3>⚠️ Top 3 Đội trưởng tồn đọng nhiều nhất</h3>
-        <ul class="alert-list" id="top-backlog-list">
-          <li>Đang tải dữ liệu...</li>
-        </ul>
-      </div>
-
-      <div class="warning-pending-section" id="warning-pending-section">
-        <h3>🚨 Cảnh báo tồn chưa xử lý (NOT OK)</h3>
-        <ul class="warning-pending-list" id="warning-pending-list">
-          <li>Đang tải dữ liệu...</li>
-        </ul>
-      </div>
-
-      <div class="success-section" id="success-section">
-        <h3>🏆 Top 3 Đội trưởng hoàn thành tốt nhất</h3>
-        <ul class="success-list" id="top-success-list">
-          <li>Đang tải dữ liệu...</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="summary-cards" id="summary-section" style="display: none;">
-      <div class="card">
-        <h3>Tổng số hiển thị</h3>
-        <p class="number" id="sum-total">0</p>
-      </div>
-      <div class="card card-warning">
-        <h3>Chưa kiểm tra</h3>
-        <p class="number" id="sum-iqc-notok">0</p>
-      </div>
-      <div class="card card-danger">
-        <h3>Chưa xử lý</h3>
-        <p class="number" id="sum-kp-chua">0</p>
-      </div>
-      <div class="card card-success">
-        <h3>Đã xử lý / OK</h3>
-        <p class="number" id="sum-done">0</p>
-      </div>
+    <!-- Tiêu đề chạy qua lại liên tục -->
+    <div class="marquee-container">
+      <div class="marquee-text">📊 DASHBOARD Kiểm Tra & Khắc Phục IQC - Đồng Nai</div>
     </div>
     
-    <div class="filter-section" id="filter-container" style="display: none;">
-      <div class="filter-group">
-        <label>Tháng (Cột BC)</label>
-        <select id="filter-thang" onchange="filterData()"><option value="">-- Chọn Tháng --</option></select>
-      </div>
-      <div class="filter-group">
-        <label>1. Vùng</label>
-        <select id="filter-vung" onchange="onVungChange()"><option value="">-- Chọn Vùng --</option></select>
-      </div>
-      <div class="filter-group">
-        <label>2. Đối tác quản lý</label>
-        <select id="filter-doitac" onchange="onDoiTacChange()" disabled><option value="">-- Chọn Đối tác --</option></select>
-      </div>
-      <div class="filter-group">
-        <label>3. Đội trưởng</label>
-        <select id="filter-doitruong" onchange="onDoiTruongChange()" disabled><option value="">-- Chọn Đội trưởng --</option></select>
-      </div>
-      <div class="filter-group">
-        <label>4. Block quản lý</label>
-        <select id="filter-block" onchange="onBlockChange()" disabled><option value="">-- Chọn Block --</option></select>
-      </div>
-      <div class="filter-group">
-        <label>5. Số hợp đồng</label>
-        <select id="filter-hopdong" onchange="filterData()" disabled><option value="">-- Chọn Hợp đồng --</option></select>
-      </div>
+    <div class="mode-switch-bar">
+      <button class="btn-mode active" id="btn-view-standard" onclick="switchView('standard')">📋 Dashboard Tổng Hợp</button>
+      <button class="btn-mode" id="btn-view-daily" onclick="switchView('daily')">📅 Giám Sát Theo Ngày</button>
     </div>
 
     <div id="loading" class="loading">⚡ Đang tải dữ liệu...</div>
-    
-    <div id="table-container" style="overflow-x: auto; display: none;">
-      <table id="data-table">
-        <thead>
-          <tr>
-            <th>Vùng</th>
-            <th>Đối tác quản lý</th>
-            <th>Đội trưởng</th>
-            <th>Block quản lý</th>
-            <th>Số hợp đồng</th>
-            <th>IQC 6 ẢNH</th>
-            <th>Thao Tác IQC</th>
-            <th id="th-kp-header" class="hidden-cell">NOT OK 6 ẢNH</th>
-            <th id="th-kp-action-header" class="hidden-cell">Thao Tác Khắc Phục</th>
-          </tr>
-        </thead>
-        <tbody id="table-body"></tbody>
-      </table>
+
+    <!-- VIEW 1: STANDARD DASHBOARD -->
+    <div id="view-standard" class="view-container">
+      <div class="alert-container-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+        <div class="alert-section">
+          <h3>⚠️ Top 3 Đội trưởng tồn đọng nhiều nhất</h3>
+          <ul class="alert-list" id="top-backlog-list"><li>Đang tải...</li></ul>
+        </div>
+        <div class="alert-section" style="background: #fdebd0; border-left-color: #e67e22;">
+          <h3 style="color: #d35400;">🚨 Cảnh báo tồn chưa xử lý (NOT OK)</h3>
+          <ul class="alert-list" style="color: #b9770e;" id="warning-pending-list"><li>Đang tải...</li></ul>
+        </div>
+        <div class="success-section">
+          <h3>🏆 Top 3 Đội trưởng hoàn thành tốt nhất</h3>
+          <ul class="success-list" id="top-success-list"><li>Đang tải...</li></ul>
+        </div>
+      </div>
+
+      <div class="summary-cards" id="summary-section">
+        <div class="card">
+          <h3>Tổng số hiển thị</h3>
+          <p class="number" id="sum-total">0</p>
+        </div>
+        <div class="card card-warning">
+          <h3>Chưa kiểm tra</h3>
+          <p class="number" id="sum-iqc-notok">0</p>
+        </div>
+        <div class="card card-danger">
+          <h3>Chưa xử lý</h3>
+          <p class="number" id="sum-kp-chua">0</p>
+        </div>
+        <div class="card card-success">
+          <h3>Đã xử lý / OK</h3>
+          <p class="number" id="sum-done">0</p>
+        </div>
+      </div>
+      
+      <div class="filter-section" id="filter-container">
+        <div class="filter-group">
+          <label>Tháng (Cột BC)</label>
+          <select id="filter-thang" onchange="filterData()"><option value="">-- Chọn Tháng --</option></select>
+        </div>
+        <div class="filter-group">
+          <label>1. Vùng</label>
+          <select id="filter-vung" onchange="onVungChange()"><option value="">-- Chọn Vùng --</option></select>
+        </div>
+        <div class="filter-group">
+          <label>2. Đối tác quản lý</label>
+          <select id="filter-doitac" onchange="onDoiTacChange()" disabled><option value="">-- Chọn Đối tác --</option></select>
+        </div>
+        <div class="filter-group">
+          <label>3. Đội trưởng</label>
+          <select id="filter-doitruong" onchange="onDoiTruongChange()" disabled><option value="">-- Chọn Đội trưởng --</option></select>
+        </div>
+        <div class="filter-group">
+          <label>4. Block quản lý</label>
+          <select id="filter-block" onchange="onBlockChange()" disabled><option value="">-- Chọn Block --</option></select>
+        </div>
+        <div class="filter-group">
+          <label>5. Số hợp đồng</label>
+          <select id="filter-hopdong" onchange="filterData()" disabled><option value="">-- Chọn Hợp đồng --</option></select>
+        </div>
+      </div>
+      
+      <div style="overflow-x: auto;">
+        <table id="data-table">
+          <thead>
+            <tr>
+              <th>Vùng</th>
+              <th>Đối tác quản lý</th>
+              <th>Đội trưởng</th>
+              <th>Block quản lý</th>
+              <th>Số hợp đồng</th>
+              <th>IQC 6 ẢNH</th>
+              <th>Thao Tác IQC</th>
+              <th id="th-kp-header" class="hidden-cell">NOT OK 6 ẢNH</th>
+              <th id="th-kp-action-header" class="hidden-cell">Thao Tác Khắc Phục</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
     </div>
+
+    <!-- VIEW 2: DAILY MONITORING DASHBOARD -->
+    <div id="view-daily" class="view-container">
+      <div class="filter-section">
+        <div class="filter-group">
+          <label>Chọn Tháng (Ký tự thứ 4 trở đi)</label>
+          <select id="daily-filter-thang" onchange="onDailyMonthChange()"><option value="">-- Tất cả Tháng --</option></select>
+        </div>
+        <div class="filter-group">
+          <label>Chọn Ngày (2 ký tự đầu)</label>
+          <select id="daily-filter-ngay" onchange="renderDailyDashboard()"><option value="">-- Tất cả Ngày --</option></select>
+        </div>
+      </div>
+
+      <!-- Khung Top 3 Cảnh báo Đội trưởng hoàn thành tốt / chưa tốt -->
+      <div class="alert-container-grid">
+        <div class="success-section">
+          <h3>🏆 Top 3 Đội trưởng hoàn thành tốt nhất</h3>
+          <ul class="success-list" id="daily-top-success"><li>Chưa có dữ liệu</li></ul>
+        </div>
+        <div class="alert-section">
+          <h3>⚠️ Top 3 Đội trưởng hoàn thành chưa tốt</h3>
+          <ul class="alert-list" id="daily-top-bad"><li>Chưa có dữ liệu</li></ul>
+        </div>
+      </div>
+
+      <div class="summary-cards">
+        <div class="card">
+          <h3>Tổng bản ghi</h3>
+          <p class="number" id="daily-sum-total">0</p>
+        </div>
+        <div class="card card-success">
+          <h3>Đã xử lý / OK</h3>
+          <p class="number" id="daily-sum-done">0</p>
+        </div>
+        <div class="card card-danger">
+          <h3>Còn tồn đọng</h3>
+          <p class="number" id="daily-sum-pending">0</p>
+        </div>
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table id="daily-data-table">
+          <thead>
+            <tr>
+              <th>Đối tác quản lý</th>
+              <th>Đội trưởng</th>
+              <th>Tổng mục</th>
+              <th>Đã xử lý / OK</th>
+              <th>Còn tồn</th>
+              <th>Tỷ lệ hoàn thành</th>
+            </tr>
+          </thead>
+          <tbody id="daily-table-body">
+            <tr><td colspan="6">Vui lòng chọn ngày/tháng để xem thống kê.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -196,15 +272,12 @@
     }
 
     function getColIdx(headers, name) {
-      let idx = headers.findIndex(h => h.toString().trim().toLowerCase() === name.toLowerCase());
-      return idx;
+      return headers.findIndex(h => h.toString().trim().toLowerCase() === name.toLowerCase());
     }
 
     function initDashboard(response) {
       document.getElementById('loading').style.display = 'none';
-      document.getElementById('filter-container').style.display = 'grid';
-      document.getElementById('summary-section').style.display = 'grid';
-      document.getElementById('table-container').style.display = 'block';
+      document.getElementById('view-standard').classList.add('active');
 
       var headers = response.headers;
       window.colMap = {
@@ -215,14 +288,30 @@
         hopdong: getColIdx(headers, "Số hợp đồng"),
         iqc: getColIdx(headers, "IQC 6 ẢNH") !== -1 ? getColIdx(headers, "IQC 6 ẢNH") : 5,
         kp: getColIdx(headers, "NOT OK 6 ẢNH") !== -1 ? getColIdx(headers, "NOT OK 6 ẢNH") : 6,
-        thang: 54, // Cột BC
-        logBF: 57  // Cột BF tương ứng index 57
+        thang: 54
       };
 
       initMonthFilter();
+      initDailyFilters();
       resetAndLoadVung();
       updateTopLists(globalData.rows);
       filterData();
+    }
+
+    function switchView(mode) {
+      document.getElementById('btn-view-standard').classList.remove('active');
+      document.getElementById('btn-view-daily').classList.remove('active');
+      document.getElementById('view-standard').classList.remove('active');
+      document.getElementById('view-daily').classList.remove('active');
+
+      if (mode === 'standard') {
+        document.getElementById('btn-view-standard').classList.add('active');
+        document.getElementById('view-standard').classList.add('active');
+      } else {
+        document.getElementById('btn-view-daily').classList.add('active');
+        document.getElementById('view-daily').classList.add('active');
+        renderDailyDashboard();
+      }
     }
 
     function initMonthFilter() {
@@ -235,9 +324,7 @@
           let val = r.values[thangIdx];
           if (val !== undefined && val !== null) {
             let strVal = String(val).trim();
-            if (strVal !== "") {
-              monthSet.add(strVal);
-            }
+            if (strVal.length >= 4) monthSet.add(strVal.substring(3));
           }
         }
       });
@@ -245,10 +332,194 @@
       monthSelect.innerHTML = '<option value="">-- Chọn Tháng --</option>';
       Array.from(monthSet).sort().forEach(m => {
         let opt = document.createElement('option');
-        opt.value = m; 
-        opt.textContent = m;
+        opt.value = m; opt.textContent = m;
         monthSelect.appendChild(opt);
       });
+    }
+
+    function initDailyFilters() {
+      var thangIdx = window.colMap.thang;
+      var monthSet = new Set();
+      var daySet = new Set();
+
+      globalData.rows.forEach(r => {
+        if (r.values.length > thangIdx) {
+          let val = r.values[thangIdx];
+          if (val !== undefined && val !== null) {
+            let strVal = String(val).trim();
+            if (strVal.length >= 4) {
+              let dayPart = strVal.substring(0, 2).trim();
+              let monthPart = strVal.substring(3).trim();
+              if (dayPart) daySet.add(dayPart);
+              if (monthPart) monthSet.add(monthPart);
+            }
+          }
+        }
+      });
+
+      var dailyMonthSel = document.getElementById('daily-filter-thang');
+      dailyMonthSel.innerHTML = '<option value="">-- Tất cả Tháng --</option>';
+      Array.from(monthSet).sort().forEach(m => {
+        let opt = document.createElement('option');
+        opt.value = m; opt.textContent = m;
+        dailyMonthSel.appendChild(opt);
+      });
+
+      var dailyDaySel = document.getElementById('daily-filter-ngay');
+      dailyDaySel.innerHTML = '<option value="">-- Tất cả Ngày --</option>';
+      Array.from(daySet).sort().forEach(d => {
+        let opt = document.createElement('option');
+        opt.value = d; opt.textContent = d;
+        dailyDaySel.appendChild(opt);
+      });
+    }
+
+    function onDailyMonthChange() {
+      renderDailyDashboard();
+    }
+
+    function renderDailyDashboard() {
+      var selectedMonth = document.getElementById('daily-filter-thang').value;
+      var selectedDay = document.getElementById('daily-filter-ngay').value;
+      var thangIdx = window.colMap.thang;
+      var cm = window.colMap;
+
+      var rows = globalData.rows.filter(r => {
+        let val = r.values.length > thangIdx ? String(r.values[thangIdx] || "").trim() : "";
+        if (val.length < 4) return false;
+
+        let dayPart = val.substring(0, 2).trim();
+        let monthPart = val.substring(3).trim();
+
+        if (selectedDay && dayPart !== selectedDay) return false;
+        if (selectedMonth && monthPart !== selectedMonth) return false;
+        return true;
+      });
+
+      var aggregatedMap = {};
+      var partnerSubtotals = {};
+      var totalRecords = rows.length;
+      var totalDone = 0;
+      var totalPending = 0;
+
+      rows.forEach(r => {
+        var vals = r.values;
+        var doiTac = vals[cm.doitac] ? String(vals[cm.doitac]).trim() : "Chưa xác định";
+        var doiTruong = vals[cm.doitruong] ? String(vals[cm.doitruong]).trim() : "Chưa phân công";
+        
+        var key = doiTac + "___" + doiTruong;
+
+        var iqcVal = vals[cm.iqc] ? String(vals[cm.iqc]).trim().toUpperCase() : "";
+        var kpVal = vals[cm.kp] ? String(vals[cm.kp]).trim().toLowerCase() : "";
+
+        var isOk = iqcVal.includes("OK") && !iqcVal.includes("NOT");
+        var isDaXuLy = kpVal.includes("đã");
+
+        if (!aggregatedMap[key]) {
+          aggregatedMap[key] = { doiTac: doiTac, doiTruong: doiTruong, total: 0, done: 0, pending: 0 };
+        }
+        aggregatedMap[key].total++;
+
+        if (!partnerSubtotals[doiTac]) {
+          partnerSubtotals[doiTac] = { total: 0, done: 0, pending: 0 };
+        }
+        partnerSubtotals[doiTac].total++;
+
+        if (isOk || isDaXuLy) {
+          aggregatedMap[key].done++;
+          totalDone++;
+          partnerSubtotals[doiTac].done++;
+        } else {
+          aggregatedMap[key].pending++;
+          totalPending++;
+          partnerSubtotals[doiTac].pending++;
+        }
+      });
+
+      document.getElementById('daily-sum-total').innerText = totalRecords;
+      document.getElementById('daily-sum-done').innerText = totalDone;
+      document.getElementById('daily-sum-pending').innerText = totalPending;
+
+      var entries = Object.values(aggregatedMap);
+
+      updateDailyTopLists(entries);
+
+      var tableBodyHtml = "";
+
+      if (entries.length === 0) {
+        tableBodyHtml = "<tr><td colspan='6'>Không tìm thấy dữ liệu phù hợp với bộ lọc ngày/tháng này.</td></tr>";
+      } else {
+        entries.sort((a, b) => {
+          if (a.doiTac !== b.doiTac) return a.doiTac.localeCompare(b.doiTac);
+          return b.pending - a.pending;
+        });
+
+        let currentPartner = "";
+
+        entries.forEach((item) => {
+          if (currentPartner !== "" && currentPartner !== item.doiTac) {
+            let pData = partnerSubtotals[currentPartner];
+            let pRate = pData.total > 0 ? ((pData.done / pData.total) * 100).toFixed(1) : 0;
+            let pRateClass = pRate < 70 ? "badge-rate-bad" : "badge-rate-good";
+            tableBodyHtml += `<tr class="partner-subtotal-row">
+              <td colspan="2" style="text-align: right;">👉 TỔNG ĐỐI TÁC: ${currentPartner}</td>
+              <td>${pData.total}</td>
+              <td style="color: #27ae60;">${pData.done}</td>
+              <td style="color: #c0392b;">${pData.pending}</td>
+              <td><span class="${pRateClass}">${pRate}%</span></td>
+            </tr>`;
+          }
+
+          currentPartner = item.doiTac;
+          let rateVal = item.total > 0 ? ((item.done / item.total) * 100).toFixed(1) : 0;
+          let rateClass = rateVal < 70 ? "badge-rate-bad" : "badge-rate-good";
+
+          tableBodyHtml += `<tr>
+            <td style="text-align: left; font-weight: bold;">${item.doiTac}</td>
+            <td style="text-align: left; font-weight: bold; color: #2980b9;">${item.doiTruong}</td>
+            <td>${item.total}</td>
+            <td style="color: #27ae60; font-weight: bold;">${item.done}</td>
+            <td style="color: #c0392b; font-weight: bold;">${item.pending}</td>
+            <td><span class="${rateClass}">${rateVal}%</span></td>
+          </tr>`;
+        });
+
+        if (currentPartner !== "") {
+          let pData = partnerSubtotals[currentPartner];
+          let pRate = pData.total > 0 ? ((pData.done / pData.total) * 100).toFixed(1) : 0;
+          let pRateClass = pRate < 70 ? "badge-rate-bad" : "badge-rate-good";
+          tableBodyHtml += `<tr class="partner-subtotal-row">
+            <td colspan="2" style="text-align: right;">👉 TỔNG ĐỐI TÁC: ${currentPartner}</td>
+            <td>${pData.total}</td>
+            <td style="color: #27ae60;">${pData.done}</td>
+            <td style="color: #c0392b;">${pData.pending}</td>
+            <td><span class="${pRateClass}">${pRate}%</span></td>
+          </tr>`;
+        }
+      }
+
+      document.getElementById('daily-table-body').innerHTML = tableBodyHtml;
+    }
+
+    function updateDailyTopLists(entries) {
+      let processedEntries = entries.map(e => {
+        let rate = e.total > 0 ? (e.done / e.total) * 100 : 0;
+        return { name: e.doiTruong, partner: e.doiTac, rate: rate, total: e.total, done: e.done };
+      });
+
+      let sortedGood = [...processedEntries].sort((a, b) => b.rate - a.rate || b.total - a.total).slice(0, 3);
+      let sortedBad = [...processedEntries].sort((a, b) => a.rate - b.rate || b.pending - b.pending).slice(0, 3);
+
+      let goodHtml = sortedGood.length === 0 || sortedGood.every(x => x.total === 0) 
+        ? "<li>Chưa có dữ liệu.</li>" 
+        : sortedGood.map((x, i) => `<li>Top ${i+1}: <b>${x.name}</b> (${x.partner}) - Hoàn thành: <b>${x.rate.toFixed(1)}%</b></li>`).join('');
+
+      let badHtml = sortedBad.length === 0 || sortedBad.every(x => x.total === 0) 
+        ? "<li>🎉 Không có đội nào kém.</li>" 
+        : sortedBad.map((x, i) => `<li>Top ${i+1}: <b>${x.name}</b> (${x.partner}) - Hoàn thành: <b>${x.rate.toFixed(1)}%</b></li>`).join('');
+
+      document.getElementById('daily-top-success').innerHTML = goodHtml;
+      document.getElementById('daily-top-bad').innerHTML = badHtml;
     }
 
     function updateTopLists(rows) {
@@ -259,68 +530,28 @@
 
       rows.forEach(r => {
         var vals = r.values;
-        var doiTruong = vals[cm.doitruong] !== undefined && vals[cm.doitruong] !== null ? String(vals[cm.doitruong]).trim() : "";
-        var iqcVal = vals[cm.iqc] !== undefined && vals[cm.iqc] !== null ? String(vals[cm.iqc]).trim() : "";
-        var kpVal = vals[cm.kp] !== undefined && vals[cm.kp] !== null ? String(vals[cm.kp]).trim() : "";
+        var doiTruong = vals[cm.doitruong] ? String(vals[cm.doitruong]).trim() : "Chưa phân công";
+        var iqcVal = vals[cm.iqc] ? String(vals[cm.iqc]).trim().toUpperCase() : "";
+        var kpVal = vals[cm.kp] ? String(vals[cm.kp]).trim().toLowerCase() : "";
 
-        if (!doiTruong) doiTruong = "Chưa phân công";
+        var isOk = iqcVal.includes("OK") && !iqcVal.includes("NOT");
+        var isDaXuLy = kpVal.includes("đã");
 
-        var iqcUpper = iqcVal.toUpperCase();
-        var kpLower = kpVal.toLowerCase();
-        var isOk = iqcUpper.includes("OK") && !iqcUpper.includes("NOT");
-        var isDaXuLy = kpLower.includes("đã");
-
-        // 1. Tổng tồn đọng chung
-        if (!isOk && !isDaXuLy) {
-          backlogCountMap[doiTruong] = (backlogCountMap[doiTruong] || 0) + 1;
-        }
-
-        // 2. Tồn chuyên biệt chưa xử lý khắc phục (Cột NOT OK 6 ẢNH có dữ liệu/chưa xử lý)
-        if ((kpVal !== "" && !isDaXuLy) || (iqcUpper.includes("NOT") && !isDaXuLy && (kpVal === "" || kpLower.includes("chưa")))) {
+        if (!isOk && !isDaXuLy) backlogCountMap[doiTruong] = (backlogCountMap[doiTruong] || 0) + 1;
+        if ((vals[cm.kp] !== "" && !isDaXuLy) || (iqcVal.includes("NOT") && !isDaXuLy && (vals[cm.kp] === "" || kpVal.includes("chưa")))) {
           pendingCountMap[doiTruong] = (pendingCountMap[doiTruong] || 0) + 1;
         }
-
-        // 3. Hoàn thành
-        if (isOk || isDaXuLy) {
-          successCountMap[doiTruong] = (successCountMap[doiTruong] || 0) + 1;
-        }
+        if (isOk || isDaXuLy) successCountMap[doiTruong] = (successCountMap[doiTruong] || 0) + 1;
       });
 
-      // Render Top tồn đọng
       var sortedBacklogs = Object.entries(backlogCountMap).sort((a, b) => b[1] - a[1]).slice(0, 3);
-      var backlogHtml = "";
-      if (sortedBacklogs.length === 0) {
-        backlogHtml = "<li>🎉 Không có đội trưởng nào tồn đọng.</li>";
-      } else {
-        sortedBacklogs.forEach(([name, count], index) => {
-          backlogHtml += `<li>Top ${index + 1}: Đội trưởng <b>${name}</b> tồn <b>${count}</b> mục.</li>`;
-        });
-      }
-      document.getElementById('top-backlog-list').innerHTML = backlogHtml;
+      document.getElementById('top-backlog-list').innerHTML = sortedBacklogs.length === 0 ? "<li>🎉 Không có tồn đọng.</li>" : sortedBacklogs.map(([n, c], i) => `<li>Top ${i+1}: <b>${n}</b> tồn <b>${c}</b> mục.</li>`).join('');
 
-      // Render Cảnh báo tồn chưa xử lý (NOT OK)
       var sortedPending = Object.entries(pendingCountMap).sort((a, b) => b[1] - a[1]).slice(0, 3);
-      var pendingHtml = "";
-      if (sortedPending.length === 0) {
-        pendingHtml = "<li>🎉 Không có hạng mục NOT OK cần xử lý.</li>";
-      } else {
-        sortedPending.forEach(([name, count], index) => {
-          pendingHtml += `<li>Top ${index + 1}: Đội trưởng <b>${name}</b> chưa xử lý <b>${count}</b> mục NOT OK.</li>`;
-        });
-      }
-      document.getElementById('warning-pending-list').innerHTML = pendingHtml;
+      document.getElementById('warning-pending-list').innerHTML = sortedPending.length === 0 ? "<li>🎉 Không có mục NOT OK cần xử lý.</li>" : sortedPending.map(([n, c], i) => `<li>Top ${i+1}: <b>${n}</b> chưa xử lý <b>${c}</b> mục.</li>`).join('');
 
-      // Render Top hoàn thành
       var sortedSuccess = Object.entries(successCountMap).sort((a, b) => b[1] - a[1]).slice(0, 3);
-      var successHtml = "";
-      if (sortedSuccess.length === 0) {
-        successHtml = "<li>Chưa có dữ liệu hoàn thành.</li>";
-      } else {
-        sortedSuccess.forEach(([name, count], index) => {
-          successHtml += `<li>Top ${index + 1}: Đội trưởng <b>${name}</b> xong <b>${count}</b> mục.</li>`;
-        });
-      }
-      document.getElementById('top-success-list').innerHTML = successHtml;
+      document.getElementById('top-success-list').innerHTML = sortedSuccess.length === 0 ? "<li>Chưa có dữ liệu.</li>" : sortedSuccess.map(([n, c], i) => `<li>Top ${i+1}: <b>${n}</b> xong <b>${c}</b> mục.</li>`).join('');
     }
 
     function resetAndLoadVung() {
@@ -330,7 +561,6 @@
         let val = r.values[window.colMap.vung];
         if (val) vungSet.add(val);
       });
-
       vungSelect.innerHTML = '<option value="">-- Chọn Vùng --</option>';
       Array.from(vungSet).sort().forEach(val => {
         let opt = document.createElement('option');
@@ -456,30 +686,22 @@
 
       var filteredRows = globalData.rows.filter(r => {
         var vals = r.values;
-        
         if (thang) {
-          let cellThang = (vals[window.colMap.thang] !== undefined && vals[window.colMap.thang] !== null) ? String(vals[window.colMap.thang]).trim() : "";
-          if (cellThang !== thang) return false;
+          let cellThang = vals[window.colMap.thang] ? String(vals[window.colMap.thang]).trim() : "";
+          if (cellThang.length < 4 || cellThang.substring(3) !== thang) return false;
         }
-
         if (vung && String(vals[window.colMap.vung]) !== vung) return false;
         if (doitac && String(vals[window.colMap.doitac]) !== doitac) return false;
         if (doitruong && String(vals[window.colMap.doitruong]) !== doitruong) return false;
         if (block && String(vals[window.colMap.block]) !== block) return false;
         if (hopdong && String(vals[window.colMap.hopdong]) !== hopdong) return false;
 
-        var currentIQC = (vals[window.colMap.iqc] !== undefined && vals[window.colMap.iqc] !== null) ? String(vals[window.colMap.iqc]).trim() : "";
-        var currentKP = (vals[window.colMap.kp] !== undefined && vals[window.colMap.kp] !== null) ? String(vals[window.colMap.kp]).trim() : "";
+        var currentIQC = vals[window.colMap.iqc] ? String(vals[window.colMap.iqc]).trim().toUpperCase() : "";
+        var currentKP = vals[window.colMap.kp] ? String(vals[window.colMap.kp]).trim().toLowerCase() : "";
+        var isOk = currentIQC.includes("OK") && !currentIQC.includes("NOT");
+        var isDaXuLy = currentKP.includes("đã");
 
-        var iqcUpper = currentIQC.toUpperCase();
-        var isOk = iqcUpper.includes("OK") && !iqcUpper.includes("NOT");
-        var isDaXuLy = currentKP.toLowerCase().includes("đã");
-
-        if (isOk || isDaXuLy) {
-          return false;
-        }
-
-        return true;
+        return !(isOk || isDaXuLy);
       });
 
       renderDashboard(filteredRows);
@@ -496,26 +718,15 @@
 
       rows.forEach(r => {
         var vals = r.values;
-        var iqcVal = vals[cm.iqc] !== undefined && vals[cm.iqc] !== null ? String(vals[cm.iqc]).trim() : "";
-        var kpVal = vals[cm.kp] !== undefined && vals[cm.kp] !== null ? String(vals[cm.kp]).trim() : "";
+        var iqcVal = vals[cm.iqc] ? String(vals[cm.iqc]).trim().toUpperCase() : "";
+        var kpVal = vals[cm.kp] ? String(vals[cm.kp]).trim().toLowerCase() : "";
 
-        var iqcUpper = iqcVal.toUpperCase();
-        var kpLower = kpVal.toLowerCase();
+        var isOk = iqcVal.includes("OK") && !iqcVal.includes("NOT");
+        var isDaXuLy = kpVal.includes("đã");
 
-        var isOk = iqcUpper.includes("OK") && !iqcUpper.includes("NOT");
-        var isDaXuLy = kpLower.includes("đã");
-
-        if (iqcVal === "" || iqcUpper.includes("CHƯA KIỂM TRA")) {
-          iqcChuaKiemTra++;
-        }
-        
-        if ((kpVal !== "" && !isDaXuLy) || (iqcUpper.includes("NOT") && !isDaXuLy && (kpVal === "" || kpLower.includes("chưa")))) {
-          kpChuaXuLy++;
-        }
-
-        if (isOk || isDaXuLy) {
-          doneCount++;
-        }
+        if (iqcVal === "" || iqcVal.includes("CHƯA KIỂM TRA")) iqcChuaKiemTra++;
+        if ((vals[cm.kp] !== "" && !isDaXuLy) || (iqcVal.includes("NOT") && !isDaXuLy && (vals[cm.kp] === "" || kpVal.includes("chưa")))) kpChuaXuLy++;
+        if (isOk || isDaXuLy) doneCount++;
       });
 
       if(document.getElementById('sum-total')) document.getElementById('sum-total').innerText = total;
@@ -532,15 +743,14 @@
         var rIdx = rowObj.rowIndex;
         var vals = rowObj.values;
 
-        var vungVal = (cm.vung !== -1) ? (vals[cm.vung] || "") : "";
-        var doitacVal = (cm.doitac !== -1) ? (vals[cm.doitac] || "") : "";
-        var doitruongVal = (vals[cm.doitruong] || "");
-        var blockVal = (cm.block !== -1) ? (vals[cm.block] || "") : "";
-        var hopdongVal = (cm.hopdong !== -1) ? (vals[cm.hopdong] || "") : "";
+        var vungVal = vals[cm.vung] || "";
+        var doitacVal = vals[cm.doitac] || "";
+        var doitruongVal = vals[cm.doitruong] || "";
+        var blockVal = vals[cm.block] || "";
+        var hopdongVal = vals[cm.hopdong] || "";
 
         var currentIQC = (vals[cm.iqc] !== undefined && vals[cm.iqc] !== null && String(vals[cm.iqc]).trim() !== "") ? vals[cm.iqc] : "Chưa kiểm tra";
         var currentKP = (vals[cm.kp] !== undefined && vals[cm.kp] !== null && String(vals[cm.kp]).trim() !== "") ? vals[cm.kp] : "";
-
         var isNotOk = String(currentIQC).toUpperCase().includes("NOT") || (currentKP && currentKP.length > 0);
 
         bodyHtml += "<tr id='row-item-" + rIdx + "'>";
@@ -550,7 +760,6 @@
         bodyHtml += "<td>" + blockVal + "</td>";
         bodyHtml += "<td>" + hopdongVal + "</td>";
         bodyHtml += "<td>" + currentIQC + "</td>";
-        
         bodyHtml += "<td>" +
                     "<select class='action-sel' id='iqc-sel-" + rIdx + "' onchange='onIqcChangeAction(" + rIdx + ")'>" +
                       "<option value='Chưa kiểm tra' " + (currentIQC === 'Chưa kiểm tra' ? 'selected' : '') + ">Chưa kiểm tra</option>" +
@@ -559,9 +768,7 @@
                     "</select> " +
                     "<button class='btn btn-iqc' onclick='submitIQC(" + rIdx + ")'>Gửi</button>" +
                     "</td>";
-
         bodyHtml += "<td id='kp-val-cell-" + rIdx + "' class='" + (isNotOk ? '' : 'hidden-cell') + "'>" + (currentKP || (String(currentIQC).toUpperCase().includes("NOT") ? "Chưa xử lý" : "")) + "</td>";
-
         bodyHtml += "<td id='kp-cell-" + rIdx + "' class='" + (isNotOk ? '' : 'hidden-cell') + "'>" +
                     "<select class='action-sel' id='kp-sel-" + rIdx + "'>" +
                       "<option value='Chưa xử lý' " + ((!currentKP || currentKP === 'Chưa xử lý' || currentKP === 'Chưa Khắc Phục') ? 'selected' : '') + ">Chưa xử lý</option>" +
@@ -569,7 +776,6 @@
                     "</select> " +
                     "<button class='btn btn-kp' onclick='submitKP(" + rIdx + ")'>Gửi</button>" +
                     "</td>";
-
         bodyHtml += "</tr>";
       });
 
@@ -595,18 +801,12 @@
       var kpCell = document.getElementById('kp-cell-' + rowIndex);
       var kpValCell = document.getElementById('kp-val-cell-' + rowIndex);
       
-      var thKpHeader = document.getElementById('th-kp-header');
-      var thKpActionHeader = document.getElementById('th-kp-action-header');
-
       if (val === 'NOT OK') {
         kpCell.classList.remove('hidden-cell');
         kpValCell.classList.remove('hidden-cell');
-        thKpHeader.classList.remove('hidden-cell');
-        thKpActionHeader.classList.remove('hidden-cell');
-        
+        document.getElementById('th-kp-header').classList.remove('hidden-cell');
+        document.getElementById('th-kp-action-header').classList.remove('hidden-cell');
         kpValCell.innerText = 'Chưa xử lý';
-        var kpSel = document.getElementById('kp-sel-' + rowIndex);
-        if(kpSel) kpSel.value = 'Chưa xử lý';
       } else {
         kpCell.classList.add('hidden-cell');
         kpValCell.classList.add('hidden-cell');
@@ -617,19 +817,14 @@
     function submitIQC(rowIndex) {
       var status = document.getElementById('iqc-sel-' + rowIndex).value;
       sessionStorage.removeItem('iqc_cache_data_v6000');
-
       fetch(API_URL, {
         method: "POST",
         body: JSON.stringify({ type: "iqc", rowIndex: rowIndex, status: status })
       })
       .then(res => res.json())
       .then(res => {
-        if (res.success) {
-          alert("✅ Đã cập nhật IQC và ghi log thành công!");
-          location.reload();
-        } else {
-          alert("❌ Lỗi: " + res.message);
-        }
+        if (res.success) { alert("✅ Đã cập nhật IQC thành công!"); location.reload(); }
+        else { alert("❌ Lỗi: " + res.message); }
       })
       .catch(err => alert("❌ Lỗi kết nối API: " + err));
     }
@@ -637,19 +832,14 @@
     function submitKP(rowIndex) {
       var status = document.getElementById('kp-sel-' + rowIndex).value;
       sessionStorage.removeItem('iqc_cache_data_v6000');
-
       fetch(API_URL, {
         method: "POST",
         body: JSON.stringify({ type: "kp", rowIndex: rowIndex, status: status })
       })
       .then(res => res.json())
       .then(res => {
-        if (res.success) {
-          alert("✅ Đã cập nhật khắc phục và ghi log thành công!");
-          location.reload();
-        } else {
-          alert("❌ Lỗi: " + res.message);
-        }
+        if (res.success) { alert("✅ Đã cập nhật khắc phục thành công!"); location.reload(); }
+        else { alert("❌ Lỗi: " + res.message); }
       })
       .catch(err => alert("❌ Lỗi kết nối API: " + err));
     }
