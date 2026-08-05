@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Dashboard Tổng Quan IQC</title>
+  <title>Dashboard Kiểm Tra & Khắc Phục IQC</title>
   <style>
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
     h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
@@ -16,13 +16,20 @@
     .card-danger { background: #e74c3c; }
     .card-success { background: #2ecc71; }
 
-    .alert-container-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-    @media (max-width: 900px) { .alert-container-grid { grid-template-columns: 1fr; } }
+    /* Cấu hình lưới hiển thị 3 khung cảnh báo */
+    .alert-container-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+    @media (max-width: 1100px) { .alert-container-grid { grid-template-columns: 1fr; } }
 
     .alert-section { background: #fadbd8; border-left: 5px solid #e74c3c; padding: 12px 15px; border-radius: 4px; }
     .alert-section h3 { margin: 0 0 8px 0; color: #c0392b; font-size: 15px; }
     .alert-list { margin: 0; padding-left: 20px; font-size: 13px; color: #922b21; }
     .alert-list li { margin-bottom: 4px; font-weight: bold; }
+
+    /* Khung cảnh báo tồn chưa xử lý riêng biệt */
+    .warning-pending-section { background: #fdebd0; border-left: 5px solid #e67e22; padding: 12px 15px; border-radius: 4px; }
+    .warning-pending-section h3 { margin: 0 0 8px 0; color: #d35400; font-size: 15px; }
+    .warning-pending-list { margin: 0; padding-left: 20px; font-size: 13px; color: #b9770e; }
+    .warning-pending-list li { margin-bottom: 4px; font-weight: bold; }
 
     .success-section { background: #d4efdf; border-left: 5px solid #2ecc71; padding: 12px 15px; border-radius: 4px; }
     .success-section h3 { margin: 0 0 8px 0; color: #196f3d; font-size: 15px; }
@@ -37,7 +44,7 @@
     
     .loading { text-align: center; font-size: 16px; color: #7f8c8d; padding: 30px; font-weight: bold; }
     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-    th, td { border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 13px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 13px; vertical-align: middle; }
     th { background-color: #3498db; color: white; }
     tr:nth-child(even) { background-color: #f9f9f9; }
     select.action-sel { padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; }
@@ -55,6 +62,7 @@
   <div class="container">
     <h2>📊 Dashboard Kiểm Tra & Khắc Phục IQC</h2>
     
+    <!-- Khu vực hiển thị 3 khung cảnh báo & tổng hợp -->
     <div class="alert-container-grid">
       <div class="alert-section" id="alert-section">
         <h3>⚠️ Top 3 Đội trưởng tồn đọng nhiều nhất</h3>
@@ -62,6 +70,14 @@
           <li>Đang tải dữ liệu...</li>
         </ul>
       </div>
+
+      <div class="warning-pending-section" id="warning-pending-section">
+        <h3>🚨 Cảnh báo tồn chưa xử lý (NOT OK)</h3>
+        <ul class="warning-pending-list" id="warning-pending-list">
+          <li>Đang tải dữ liệu...</li>
+        </ul>
+      </div>
+
       <div class="success-section" id="success-section">
         <h3>🏆 Top 3 Đội trưởng hoàn thành tốt nhất</h3>
         <ul class="success-list" id="top-success-list">
@@ -128,9 +144,9 @@
             <th>Block quản lý</th>
             <th>Số hợp đồng</th>
             <th>IQC 6 ẢNH</th>
-            <th>NOT OK 6 ẢNH</th>
             <th>Thao Tác IQC</th>
-            <th>Thao Tác Khắc Phục</th>
+            <th id="th-kp-header" class="hidden-cell">NOT OK 6 ẢNH</th>
+            <th id="th-kp-action-header" class="hidden-cell">Thao Tác Khắc Phục</th>
           </tr>
         </thead>
         <tbody id="table-body"></tbody>
@@ -161,10 +177,6 @@
       window[callbackName] = function(data) {
         delete window[callbackName];
         if (script.parentNode) script.parentNode.removeChild(script);
-        
-        if (data && data.rows && data.rows.length > 6000) {
-          data.rows = data.rows.slice(0, 6000);
-        }
 
         globalData = data;
         try {
@@ -176,7 +188,7 @@
       };
 
       var script = document.createElement('script');
-      script.src = API_URL + "?action=getData&limit=6000&callback=" + callbackName;
+      script.src = API_URL + "?action=getData&callback=" + callbackName;
       script.onerror = function() {
         document.getElementById('loading').innerText = "❌ Không thể kết nối đến Google Sheets API.";
       };
@@ -242,46 +254,70 @@
     function updateTopLists(rows) {
       var cm = window.colMap;
       var backlogCountMap = {};
+      var pendingCountMap = {};
       var successCountMap = {};
 
       rows.forEach(r => {
         var vals = r.values;
         var doiTruong = vals[cm.doitruong] !== undefined && vals[cm.doitruong] !== null ? String(vals[cm.doitruong]).trim() : "";
-        var iqcVal = vals[cm.iqc] !== undefined && vals[cm.iqc] !== null && String(vals[cm.iqc]).trim() !== "" ? String(vals[cm.iqc]).trim() : "Chưa kiểm tra";
-        var kpVal = vals[cm.kp] !== undefined && vals[cm.kp] !== null && String(vals[cm.kp]).trim() !== "" ? String(vals[cm.kp]).trim() : "Chưa xử lý";
+        var iqcVal = vals[cm.iqc] !== undefined && vals[cm.iqc] !== null ? String(vals[cm.iqc]).trim() : "";
+        var kpVal = vals[cm.kp] !== undefined && vals[cm.kp] !== null ? String(vals[cm.kp]).trim() : "";
 
         if (!doiTruong) doiTruong = "Chưa phân công";
 
-        var isOk = iqcVal.toUpperCase().includes("OK") && !iqcVal.toUpperCase().includes("NOT");
-        var isDaXuLy = kpVal.toLowerCase().includes("đã");
+        var iqcUpper = iqcVal.toUpperCase();
+        var kpLower = kpVal.toLowerCase();
+        var isOk = iqcUpper.includes("OK") && !iqcUpper.includes("NOT");
+        var isDaXuLy = kpLower.includes("đã");
 
+        // 1. Tổng tồn đọng chung
         if (!isOk && !isDaXuLy) {
           backlogCountMap[doiTruong] = (backlogCountMap[doiTruong] || 0) + 1;
         }
 
+        // 2. Tồn chuyên biệt chưa xử lý khắc phục (Cột NOT OK 6 ẢNH có dữ liệu/chưa xử lý)
+        if ((kpVal !== "" && !isDaXuLy) || (iqcUpper.includes("NOT") && !isDaXuLy && (kpVal === "" || kpLower.includes("chưa")))) {
+          pendingCountMap[doiTruong] = (pendingCountMap[doiTruong] || 0) + 1;
+        }
+
+        // 3. Hoàn thành
         if (isOk || isDaXuLy) {
           successCountMap[doiTruong] = (successCountMap[doiTruong] || 0) + 1;
         }
       });
 
+      // Render Top tồn đọng
       var sortedBacklogs = Object.entries(backlogCountMap).sort((a, b) => b[1] - a[1]).slice(0, 3);
       var backlogHtml = "";
       if (sortedBacklogs.length === 0) {
         backlogHtml = "<li>🎉 Không có đội trưởng nào tồn đọng.</li>";
       } else {
         sortedBacklogs.forEach(([name, count], index) => {
-          backlogHtml += `<li>Top ${index + 1}: Đội trưởng <b>${name}</b> tồn đọng <b>${count}</b> hạng mục.</li>`;
+          backlogHtml += `<li>Top ${index + 1}: Đội trưởng <b>${name}</b> tồn <b>${count}</b> mục.</li>`;
         });
       }
       document.getElementById('top-backlog-list').innerHTML = backlogHtml;
 
+      // Render Cảnh báo tồn chưa xử lý (NOT OK)
+      var sortedPending = Object.entries(pendingCountMap).sort((a, b) => b[1] - a[1]).slice(0, 3);
+      var pendingHtml = "";
+      if (sortedPending.length === 0) {
+        pendingHtml = "<li>🎉 Không có hạng mục NOT OK cần xử lý.</li>";
+      } else {
+        sortedPending.forEach(([name, count], index) => {
+          pendingHtml += `<li>Top ${index + 1}: Đội trưởng <b>${name}</b> chưa xử lý <b>${count}</b> mục NOT OK.</li>`;
+        });
+      }
+      document.getElementById('warning-pending-list').innerHTML = pendingHtml;
+
+      // Render Top hoàn thành
       var sortedSuccess = Object.entries(successCountMap).sort((a, b) => b[1] - a[1]).slice(0, 3);
       var successHtml = "";
       if (sortedSuccess.length === 0) {
         successHtml = "<li>Chưa có dữ liệu hoàn thành.</li>";
       } else {
         sortedSuccess.forEach(([name, count], index) => {
-          successHtml += `<li>Top ${index + 1}: Đội trưởng <b>${name}</b> hoàn thành <b>${count}</b> hạng mục.</li>`;
+          successHtml += `<li>Top ${index + 1}: Đội trưởng <b>${name}</b> xong <b>${count}</b> mục.</li>`;
         });
       }
       document.getElementById('top-success-list').innerHTML = successHtml;
@@ -432,10 +468,11 @@
         if (block && String(vals[window.colMap.block]) !== block) return false;
         if (hopdong && String(vals[window.colMap.hopdong]) !== hopdong) return false;
 
-        var currentIQC = (vals[window.colMap.iqc] !== undefined && vals[window.colMap.iqc] !== null && String(vals[window.colMap.iqc]).trim() !== "") ? String(vals[window.colMap.iqc]).trim() : "Chưa kiểm tra";
-        var currentKP = (vals[window.colMap.kp] !== undefined && vals[window.colMap.kp] !== null && String(vals[window.colMap.kp]).trim() !== "") ? String(vals[window.colMap.kp]).trim() : "Chưa xử lý";
+        var currentIQC = (vals[window.colMap.iqc] !== undefined && vals[window.colMap.iqc] !== null) ? String(vals[window.colMap.iqc]).trim() : "";
+        var currentKP = (vals[window.colMap.kp] !== undefined && vals[window.colMap.kp] !== null) ? String(vals[window.colMap.kp]).trim() : "";
 
-        var isOk = currentIQC.toUpperCase().includes("OK") && !currentIQC.toUpperCase().includes("NOT");
+        var iqcUpper = currentIQC.toUpperCase();
+        var isOk = iqcUpper.includes("OK") && !iqcUpper.includes("NOT");
         var isDaXuLy = currentKP.toLowerCase().includes("đã");
 
         if (isOk || isDaXuLy) {
@@ -459,21 +496,32 @@
 
       rows.forEach(r => {
         var vals = r.values;
-        var iqcVal = vals[cm.iqc] !== undefined && vals[cm.iqc] !== null && String(vals[cm.iqc]).trim() !== "" ? String(vals[cm.iqc]).trim() : "Chưa kiểm tra";
-        var kpVal = vals[cm.kp] !== undefined && vals[cm.kp] !== null && String(vals[cm.kp]).trim() !== "" ? String(vals[cm.kp]).trim() : "Chưa xử lý";
+        var iqcVal = vals[cm.iqc] !== undefined && vals[cm.iqc] !== null ? String(vals[cm.iqc]).trim() : "";
+        var kpVal = vals[cm.kp] !== undefined && vals[cm.kp] !== null ? String(vals[cm.kp]).trim() : "";
 
-        var isOk = iqcVal.toUpperCase().includes("OK") && !iqcVal.toUpperCase().includes("NOT");
-        var isDaXuLy = kpVal.toLowerCase().includes("đã");
+        var iqcUpper = iqcVal.toUpperCase();
+        var kpLower = kpVal.toLowerCase();
 
-        if (iqcVal.toLowerCase().includes("chưa kiểm tra") || (iqcVal.toUpperCase().includes("NOT OK") && !isDaXuLy)) iqcChuaKiemTra++;
-        if (kpVal.toLowerCase().includes("chưa")) kpChuaXuLy++;
-        if (isOk || isDaXuLy) doneCount++;
+        var isOk = iqcUpper.includes("OK") && !iqcUpper.includes("NOT");
+        var isDaXuLy = kpLower.includes("đã");
+
+        if (iqcVal === "" || iqcUpper.includes("CHƯA KIỂM TRA")) {
+          iqcChuaKiemTra++;
+        }
+        
+        if ((kpVal !== "" && !isDaXuLy) || (iqcUpper.includes("NOT") && !isDaXuLy && (kpVal === "" || kpLower.includes("chưa")))) {
+          kpChuaXuLy++;
+        }
+
+        if (isOk || isDaXuLy) {
+          doneCount++;
+        }
       });
 
-      document.getElementById('sum-total').innerText = total;
-      document.getElementById('sum-iqc-notok').innerText = iqcChuaKiemTra;
-      document.getElementById('sum-kp-chua').innerText = kpChuaXuLy;
-      document.getElementById('sum-done').innerText = doneCount;
+      if(document.getElementById('sum-total')) document.getElementById('sum-total').innerText = total;
+      if(document.getElementById('sum-iqc-notok')) document.getElementById('sum-iqc-notok').innerText = iqcChuaKiemTra;
+      if(document.getElementById('sum-kp-chua')) document.getElementById('sum-kp-chua').innerText = kpChuaXuLy;
+      if(document.getElementById('sum-done')) document.getElementById('sum-done').innerText = doneCount;
     }
 
     function renderDashboard(rows) {
@@ -491,9 +539,9 @@
         var hopdongVal = (cm.hopdong !== -1) ? (vals[cm.hopdong] || "") : "";
 
         var currentIQC = (vals[cm.iqc] !== undefined && vals[cm.iqc] !== null && String(vals[cm.iqc]).trim() !== "") ? vals[cm.iqc] : "Chưa kiểm tra";
-        var currentKP = (vals[cm.kp] !== undefined && vals[cm.kp] !== null && String(vals[cm.kp]).trim() !== "") ? vals[cm.kp] : "Chưa xử lý";
+        var currentKP = (vals[cm.kp] !== undefined && vals[cm.kp] !== null && String(vals[cm.kp]).trim() !== "") ? vals[cm.kp] : "";
 
-        var isOk = String(currentIQC).toUpperCase().includes("OK") && !String(currentIQC).toUpperCase().includes("NOT");
+        var isNotOk = String(currentIQC).toUpperCase().includes("NOT") || (currentKP && currentKP.length > 0);
 
         bodyHtml += "<tr id='row-item-" + rIdx + "'>";
         bodyHtml += "<td>" + vungVal + "</td>";
@@ -502,8 +550,7 @@
         bodyHtml += "<td>" + blockVal + "</td>";
         bodyHtml += "<td>" + hopdongVal + "</td>";
         bodyHtml += "<td>" + currentIQC + "</td>";
-        bodyHtml += "<td>" + currentKP + "</td>";
-
+        
         bodyHtml += "<td>" +
                     "<select class='action-sel' id='iqc-sel-" + rIdx + "' onchange='onIqcChangeAction(" + rIdx + ")'>" +
                       "<option value='Chưa kiểm tra' " + (currentIQC === 'Chưa kiểm tra' ? 'selected' : '') + ">Chưa kiểm tra</option>" +
@@ -513,9 +560,11 @@
                     "<button class='btn btn-iqc' onclick='submitIQC(" + rIdx + ")'>Gửi</button>" +
                     "</td>";
 
-        bodyHtml += "<td id='kp-cell-" + rIdx + "' class='" + (isOk ? 'hidden-cell' : '') + "'>" +
+        bodyHtml += "<td id='kp-val-cell-" + rIdx + "' class='" + (isNotOk ? '' : 'hidden-cell') + "'>" + (currentKP || (String(currentIQC).toUpperCase().includes("NOT") ? "Chưa xử lý" : "")) + "</td>";
+
+        bodyHtml += "<td id='kp-cell-" + rIdx + "' class='" + (isNotOk ? '' : 'hidden-cell') + "'>" +
                     "<select class='action-sel' id='kp-sel-" + rIdx + "'>" +
-                      "<option value='Chưa xử lý' " + (currentKP === 'Chưa xử lý' || currentKP === 'Chưa Khắc Phục' ? 'selected' : '') + ">Chưa xử lý</option>" +
+                      "<option value='Chưa xử lý' " + ((!currentKP || currentKP === 'Chưa xử lý' || currentKP === 'Chưa Khắc Phục') ? 'selected' : '') + ">Chưa xử lý</option>" +
                       "<option value='Đã xử lý' " + (currentKP === 'Đã xử lý' || currentKP === 'Đã Khắc Phục' ? 'selected' : '') + ">Đã xử lý</option>" +
                     "</select> " +
                     "<button class='btn btn-kp' onclick='submitKP(" + rIdx + ")'>Gửi</button>" +
@@ -525,15 +574,43 @@
       });
 
       document.getElementById('table-body').innerHTML = bodyHtml;
+      
+      let hasNotOk = rows.some(r => {
+        let val = r.values[cm.iqc];
+        let kpVal = r.values[cm.kp];
+        return (val && String(val).toUpperCase().includes("NOT")) || (kpVal && String(kpVal).trim() !== "");
+      });
+      
+      if(hasNotOk) {
+        document.getElementById('th-kp-header').classList.remove('hidden-cell');
+        document.getElementById('th-kp-action-header').classList.remove('hidden-cell');
+      } else {
+        document.getElementById('th-kp-header').classList.add('hidden-cell');
+        document.getElementById('th-kp-action-header').classList.add('hidden-cell');
+      }
     }
 
     function onIqcChangeAction(rowIndex) {
       var val = document.getElementById('iqc-sel-' + rowIndex).value;
       var kpCell = document.getElementById('kp-cell-' + rowIndex);
-      if (val === 'OK') {
-        kpCell.classList.add('hidden-cell');
-      } else {
+      var kpValCell = document.getElementById('kp-val-cell-' + rowIndex);
+      
+      var thKpHeader = document.getElementById('th-kp-header');
+      var thKpActionHeader = document.getElementById('th-kp-action-header');
+
+      if (val === 'NOT OK') {
         kpCell.classList.remove('hidden-cell');
+        kpValCell.classList.remove('hidden-cell');
+        thKpHeader.classList.remove('hidden-cell');
+        thKpActionHeader.classList.remove('hidden-cell');
+        
+        kpValCell.innerText = 'Chưa xử lý';
+        var kpSel = document.getElementById('kp-sel-' + rowIndex);
+        if(kpSel) kpSel.value = 'Chưa xử lý';
+      } else {
+        kpCell.classList.add('hidden-cell');
+        kpValCell.classList.add('hidden-cell');
+        kpValCell.innerText = '';
       }
     }
 
@@ -543,13 +620,13 @@
 
       fetch(API_URL, {
         method: "POST",
-        body: JSON.stringify({ type: "iqc", rowIndex: rowIndex, status: status, logCol: "BF" })
+        body: JSON.stringify({ type: "iqc", rowIndex: rowIndex, status: status })
       })
       .then(res => res.json())
       .then(res => {
         if (res.success) {
-          alert("✅ Đã cập nhật IQC và ghi log vào cột BF thành công!");
-          document.getElementById('row-item-' + rowIndex).classList.add('hidden-row');
+          alert("✅ Đã cập nhật IQC và ghi log thành công!");
+          location.reload();
         } else {
           alert("❌ Lỗi: " + res.message);
         }
@@ -563,13 +640,13 @@
 
       fetch(API_URL, {
         method: "POST",
-        body: JSON.stringify({ type: "kp", rowIndex: rowIndex, status: status, logCol: "BF" })
+        body: JSON.stringify({ type: "kp", rowIndex: rowIndex, status: status })
       })
       .then(res => res.json())
       .then(res => {
         if (res.success) {
-          alert("✅ Đã cập nhật khắc phục và ghi log vào cột BF thành công!");
-          document.getElementById('row-item-' + rowIndex).classList.add('hidden-row');
+          alert("✅ Đã cập nhật khắc phục và ghi log thành công!");
+          location.reload();
         } else {
           alert("❌ Lỗi: " + res.message);
         }
