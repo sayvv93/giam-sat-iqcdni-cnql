@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Dashboard Tổng Quan IQC</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+    h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
+    .container { max-width: 1300px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    
+    .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
+    .card { background: #3498db; color: white; padding: 15px; border-radius: 6px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .card h3 { margin: 0 0 5px 0; font-size: 14px; text-transform: uppercase; opacity: 0.9; }
+    .card .number { font-size: 24px; font-weight: bold; margin: 0; }
+    .card-warning { background: #e67e22; }
+    .card-danger { background: #e74c3c; }
+    .card-success { background: #2ecc71; }
+
+    .alert-container-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+    @media (max-width: 900px) { .alert-container-grid { grid-template-columns: 1fr; } }
+
+    .alert-section { background: #fadbd8; border-left: 5px solid #e74c3c; padding: 12px 15px; border-radius: 4px; }
+    .alert-section h3 { margin: 0 0 8px 0; color: #c0392b; font-size: 15px; }
+    .alert-list { margin: 0; padding-left: 20px; font-size: 13px; color: #922b21; }
+    .alert-list li { margin-bottom: 4px; font-weight: bold; }
+
+    .success-section { background: #d4efdf; border-left: 5px solid #2ecc71; padding: 12px 15px; border-radius: 4px; }
+    .success-section h3 { margin: 0 0 8px 0; color: #196f3d; font-size: 15px; }
+    .success-list { margin: 0; padding-left: 20px; font-size: 13px; color: #145a32; }
+    .success-list li { margin-bottom: 4px; font-weight: bold; }
+
+    .filter-section { background: #ecf0f1; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+    .filter-group { display: flex; flex-direction: column; }
+    .filter-group label { font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #34495e; }
+    .filter-group select { padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; }
+    .filter-group select:disabled { background-color: #e0e0e0; cursor: not-allowed; }
+    
+    .loading { text-align: center; font-size: 16px; color: #7f8c8d; padding: 30px; font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 13px; }
+    th { background-color: #3498db; color: white; }
+    tr:nth-child(even) { background-color: #f9f9f9; }
+    select.action-sel { padding: 6px 10px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; }
+    .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; transition: 0.2s; }
+    .btn-iqc { background-color: #2ecc71; }
+    .btn-iqc:hover { background-color: #27ae60; }
+    .btn-kp { background-color: #e67e22; }
+    .btn-kp:hover { background-color: #d35400; }
+    .hidden-row { display: none !important; }
+    .hidden-cell { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>📊 Dashboard Kiểm Tra & Khắc Phục IQC</h2>
+    
+    <div class="alert-container-grid">
+      <div class="alert-section" id="alert-section">
+        <h3>⚠️ Top 3 Đội trưởng tồn đọng nhiều nhất</h3>
+        <ul class="alert-list" id="top-backlog-list">
+          <li>Đang tải dữ liệu...</li>
+        </ul>
+      </div>
+      <div class="success-section" id="success-section">
+        <h3>🏆 Top 3 Đội trưởng hoàn thành tốt nhất</h3>
+        <ul class="success-list" id="top-success-list">
+          <li>Đang tải dữ liệu...</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="summary-cards" id="summary-section" style="display: none;">
+      <div class="card">
+        <h3>Tổng số hiển thị</h3>
+        <p class="number" id="sum-total">0</p>
+      </div>
+      <div class="card card-warning">
+        <h3>Chưa kiểm tra</h3>
+        <p class="number" id="sum-iqc-notok">0</p>
+      </div>
+      <div class="card card-danger">
+        <h3>Chưa xử lý</h3>
+        <p class="number" id="sum-kp-chua">0</p>
+      </div>
+      <div class="card card-success">
+        <h3>Đã xử lý / OK</h3>
+        <p class="number" id="sum-done">0</p>
+      </div>
+    </div>
+    
+    <div class="filter-section" id="filter-container" style="display: none;">
+      <div class="filter-group">
+        <label>Tháng (Cột BC)</label>
+        <select id="filter-thang" onchange="filterData()"><option value="">-- Chọn Tháng --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>1. Vùng</label>
+        <select id="filter-vung" onchange="onVungChange()"><option value="">-- Chọn Vùng --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>2. Đối tác quản lý</label>
+        <select id="filter-doitac" onchange="onDoiTacChange()" disabled><option value="">-- Chọn Đối tác --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>3. Đội trưởng</label>
+        <select id="filter-doitruong" onchange="onDoiTruongChange()" disabled><option value="">-- Chọn Đội trưởng --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>4. Block quản lý</label>
+        <select id="filter-block" onchange="onBlockChange()" disabled><option value="">-- Chọn Block --</option></select>
+      </div>
+      <div class="filter-group">
+        <label>5. Số hợp đồng</label>
+        <select id="filter-hopdong" onchange="filterData()" disabled><option value="">-- Chọn Hợp đồng --</option></select>
+      </div>
+    </div>
+
+    <div id="loading" class="loading">⚡ Đang tải dữ liệu...</div>
+    
+    <div id="table-container" style="overflow-x: auto; display: none;">
+      <table id="data-table">
+        <thead>
+          <tr>
+            <th>Vùng</th>
+            <th>Đối tác quản lý</th>
+            <th>Đội trưởng</th>
+            <th>Block quản lý</th>
+            <th>Số hợp đồng</th>
+            <th>IQC 6 ẢNH</th>
+            <th>NOT OK 6 ẢNH</th>
+            <th>Thao Tác IQC</th>
+            <th>Thao Tác Khắc Phục</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzEidgo_zfHrTMFhGzcJ_EgBoW7e0w-hyuiQqi3UDwQ_XHC76snDl1hpCAx9808b53V/exec";
+    let globalData = null;
+
+    document.addEventListener("DOMContentLoaded", function() {
+      loadData();
+    });
+
+    function loadData() {
+      const cachedData = sessionStorage.getItem('iqc_cache_data_v6000');
+      const cachedTime = sessionStorage.getItem('iqc_cache_time_v6000');
+      const now = new Date().getTime();
+
+      if (cachedData && cachedTime && (now - cachedTime < 300000)) {
+        globalData = JSON.parse(cachedData);
+        initDashboard(globalData);
+        return;
+      }
+
+      var callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+      window[callbackName] = function(data) {
+        delete window[callbackName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+        
+        if (data && data.rows && data.rows.length > 6000) {
+          data.rows = data.rows.slice(0, 6000);
+        }
+
+        globalData = data;
+        try {
+          sessionStorage.setItem('iqc_cache_data_v6000', JSON.stringify(data));
+          sessionStorage.setItem('iqc_cache_time_v6000', new Date().getTime());
+        } catch(e) {}
+
+        initDashboard(data);
+      };
+
+      var script = document.createElement('script');
+      script.src = API_URL + "?action=getData&limit=6000&callback=" + callbackName;
+      script.onerror = function() {
+        document.getElementById('loading').innerText = "❌ Không thể kết nối đến Google Sheets API.";
+      };
+      document.body.appendChild(script);
+    }
+
+    function getColIdx(headers, name) {
+      let idx = headers.findIndex(h => h.toString().trim().toLowerCase() === name.toLowerCase());
+      return idx;
+    }
+
+    function initDashboard(response) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('filter-container').style.display = 'grid';
+      document.getElementById('summary-section').style.display = 'grid';
+      document.getElementById('table-container').style.display = 'block';
+
+      var headers = response.headers;
+      window.colMap = {
+        vung: getColIdx(headers, "Vùng"),
+        doitac: getColIdx(headers, "Đối tác quản lý"),
+        doitruong: getColIdx(headers, "Đội trưởng") !== -1 ? getColIdx(headers, "Đội trưởng") : 2,
+        block: getColIdx(headers, "Block quản lý"),
+        hopdong: getColIdx(headers, "Số hợp đồng"),
+        iqc: getColIdx(headers, "IQC 6 ẢNH") !== -1 ? getColIdx(headers, "IQC 6 ẢNH") : 5,
+        kp: getColIdx(headers, "NOT OK 6 ẢNH") !== -1 ? getColIdx(headers, "NOT OK 6 ẢNH") : 6,
+        thang: 54, // Cột BC
+        logBF: 57  // Cột BF tương ứng index 57
+      };
+
+      initMonthFilter();
+      resetAndLoadVung();
+      updateTopLists(globalData.rows);
+      filterData();
+    }
+
+    function initMonthFilter() {
+      var monthSelect = document.getElementById('filter-thang');
+      var monthSet = new Set();
+      var thangIdx = window.colMap.thang;
+
+      globalData.rows.forEach(r => {
+        if (r.values.length > thangIdx) {
+          let val = r.values[thangIdx];
+          if (val !== undefined && val !== null) {
+            let strVal = String(val).trim();
+            if (strVal !== "") {
+              monthSet.add(strVal);
+            }
+          }
+        }
+      });
+
+      monthSelect.innerHTML = '<option value="">-- Chọn Tháng --</option>';
+      Array.from(monthSet).sort().forEach(m => {
+        let opt = document.createElement('option');
+        opt.value = m; 
+        opt.textContent = m;
+        monthSelect.appendChild(opt);
+      });
+    }
+
+    function updateTopLists(rows) {
+      var cm = window.colMap;
+      var backlogCountMap = {};
+      var successCountMap = {};
+
+      rows.forEach(r => {
+        var vals = r.values;
+        var doiTruong = vals[cm.doitruong] !== undefined && vals[cm.doitruong] !== null ? String(vals[cm.doitruong]).trim() : "";
+        var iqcVal = vals[cm.iqc] !== undefined && vals[cm.iqc] !== null && String(vals[cm.iqc]).trim() !== "" ? String(vals[cm.iqc]).trim() : "Chưa kiểm tra";
+        var kpVal = vals[cm.kp] !== undefined && vals[cm.kp] !== null && String(vals[cm.kp]).trim() !== "" ? String(vals[cm.kp]).trim() : "Chưa xử lý";
+
+        if (!doiTruong) doiTruong = "Chưa phân công";
+
+        var isOk = iqcVal.toUpperCase().includes("OK") && !iqcVal.toUpperCase().includes("NOT");
+        var isDaXuLy = kpVal.toLowerCase().includes("đã");
+
+        if (!isOk && !isDaXuLy) {
+          backlogCountMap[doiTruong] = (backlogCountMap[doiTruong] || 0) + 1;
+        }
+
+        if (isOk || isDaXuLy) {
+          successCountMap[doiTruong] = (successCountMap[doiTruong] || 0) + 1;
+        }
+      });
+
+      var sortedBacklogs = Object.entries(backlogCountMap).sort((a, b) => b[1] - a[1]).slice(0, 3);
+      var backlogHtml = "";
+      if (sortedBacklogs.length === 0) {
+        backlogHtml = "<li>🎉 Không có đội trưởng nào tồn đọng.</li>";
+      } else {
+        sortedBacklogs.forEach(([name, count], index) => {
+          backlogHtml += `<li>Top ${index + 1}: Đội trưởng <b>${name}</b> tồn đọng <b>${count}</b> hạng mục.</li>`;
+        });
+      }
+      document.getElementById('top-backlog-list').innerHTML = backlogHtml;
+
+      var sortedSuccess = Object.entries(successCountMap).sort((a, b) => b[1] - a[1]).slice(0, 3);
+      var successHtml = "";
+      if (sortedSuccess.length === 0) {
+        successHtml = "<li>Chưa có dữ liệu hoàn thành.</li>";
+      } else {
+        sortedSuccess.forEach(([name, count], index) => {
+          successHtml += `<li>Top ${index + 1}: Đội trưởng <b>${name}</b> hoàn thành <b>${count}</b> hạng mục.</li>`;
+        });
+      }
+      document.getElementById('top-success-list').innerHTML = successHtml;
+    }
+
+    function resetAndLoadVung() {
+      var vungSelect = document.getElementById('filter-vung');
+      var vungSet = new Set();
+      globalData.rows.forEach(r => {
+        let val = r.values[window.colMap.vung];
+        if (val) vungSet.add(val);
+      });
+
+      vungSelect.innerHTML = '<option value="">-- Chọn Vùng --</option>';
+      Array.from(vungSet).sort().forEach(val => {
+        let opt = document.createElement('option');
+        opt.value = val; opt.textContent = val;
+        vungSelect.appendChild(opt);
+      });
+    }
+
+    function onVungChange() {
+      var vungVal = document.getElementById('filter-vung').value;
+      resetSelect('filter-doitac', '-- Chọn Đối tác --');
+      resetSelect('filter-doitruong', '-- Chọn Đội trưởng --');
+      resetSelect('filter-block', '-- Chọn Block --');
+      resetSelect('filter-hopdong', '-- Chọn Hợp đồng --');
+
+      if (vungVal) {
+        let doiTacSet = new Set();
+        globalData.rows.forEach(r => {
+          if (r.values[window.colMap.vung] === vungVal) {
+            let val = r.values[window.colMap.doitac];
+            if (val) doiTacSet.add(val);
+          }
+        });
+        populateSelectOptions('filter-doitac', doiTacSet);
+        document.getElementById('filter-doitac').disabled = false;
+      } else {
+        document.getElementById('filter-doitac').disabled = true;
+      }
+      filterData();
+    }
+
+    function onDoiTacChange() {
+      var vungVal = document.getElementById('filter-vung').value;
+      var doitacVal = document.getElementById('filter-doitac').value;
+      resetSelect('filter-doitruong', '-- Chọn Đội trưởng --');
+      resetSelect('filter-block', '-- Chọn Block --');
+      resetSelect('filter-hopdong', '-- Chọn Hợp đồng --');
+
+      if (doitacVal) {
+        let doiTruongSet = new Set();
+        globalData.rows.forEach(r => {
+          if (r.values[window.colMap.vung] === vungVal && r.values[window.colMap.doitac] === doitacVal) {
+            let val = r.values[window.colMap.doitruong];
+            if (val) doiTruongSet.add(val);
+          }
+        });
+        populateSelectOptions('filter-doitruong', doiTruongSet);
+        document.getElementById('filter-doitruong').disabled = false;
+      } else {
+        document.getElementById('filter-doitruong').disabled = true;
+      }
+      filterData();
+    }
+
+    function onDoiTruongChange() {
+      var vungVal = document.getElementById('filter-vung').value;
+      var doitacVal = document.getElementById('filter-doitac').value;
+      var doitruongVal = document.getElementById('filter-doitruong').value;
+      resetSelect('filter-block', '-- Chọn Block --');
+      resetSelect('filter-hopdong', '-- Chọn Hợp đồng --');
+
+      if (doitruongVal) {
+        let blockSet = new Set();
+        globalData.rows.forEach(r => {
+          if (r.values[window.colMap.vung] === vungVal && r.values[window.colMap.doitac] === doitacVal && r.values[window.colMap.doitruong] === doitruongVal) {
+            let val = r.values[window.colMap.block];
+            if (val) blockSet.add(val);
+          }
+        });
+        populateSelectOptions('filter-block', blockSet);
+        document.getElementById('filter-block').disabled = false;
+      } else {
+        document.getElementById('filter-block').disabled = true;
+      }
+      filterData();
+    }
+
+    function onBlockChange() {
+      var vungVal = document.getElementById('filter-vung').value;
+      var doitacVal = document.getElementById('filter-doitac').value;
+      var doitruongVal = document.getElementById('filter-doitruong').value;
+      var blockVal = document.getElementById('filter-block').value;
+      resetSelect('filter-hopdong', '-- Chọn Hợp đồng --');
+
+      if (blockVal) {
+        let hopDongSet = new Set();
+        globalData.rows.forEach(r => {
+          if (r.values[window.colMap.vung] === vungVal && r.values[window.colMap.doitac] === doitacVal && r.values[window.colMap.doitruong] === doitruongVal && r.values[window.colMap.block] === blockVal) {
+            let val = r.values[window.colMap.hopdong];
+            if (val) hopDongSet.add(val);
+          }
+        });
+        populateSelectOptions('filter-hopdong', hopDongSet);
+        document.getElementById('filter-hopdong').disabled = false;
+      } else {
+        document.getElementById('filter-hopdong').disabled = true;
+      }
+      filterData();
+    }
+
+    function resetSelect(elementId, defaultText) {
+      var sel = document.getElementById(elementId);
+      sel.innerHTML = '<option value="">' + defaultText + '</option>';
+      sel.disabled = true;
+    }
+
+    function populateSelectOptions(elementId, setValues) {
+      var sel = document.getElementById(elementId);
+      Array.from(setValues).sort().forEach(val => {
+        var opt = document.createElement('option');
+        opt.value = val; opt.textContent = val;
+        sel.appendChild(opt);
+      });
+    }
+
+    function filterData() {
+      var thang = document.getElementById('filter-thang').value;
+      var vung = document.getElementById('filter-vung').value;
+      var doitac = document.getElementById('filter-doitac').value;
+      var doitruong = document.getElementById('filter-doitruong').value;
+      var block = document.getElementById('filter-block').value;
+      var hopdong = document.getElementById('filter-hopdong').value;
+
+      var filteredRows = globalData.rows.filter(r => {
+        var vals = r.values;
+        
+        if (thang) {
+          let cellThang = (vals[window.colMap.thang] !== undefined && vals[window.colMap.thang] !== null) ? String(vals[window.colMap.thang]).trim() : "";
+          if (cellThang !== thang) return false;
+        }
+
+        if (vung && String(vals[window.colMap.vung]) !== vung) return false;
+        if (doitac && String(vals[window.colMap.doitac]) !== doitac) return false;
+        if (doitruong && String(vals[window.colMap.doitruong]) !== doitruong) return false;
+        if (block && String(vals[window.colMap.block]) !== block) return false;
+        if (hopdong && String(vals[window.colMap.hopdong]) !== hopdong) return false;
+
+        var currentIQC = (vals[window.colMap.iqc] !== undefined && vals[window.colMap.iqc] !== null && String(vals[window.colMap.iqc]).trim() !== "") ? String(vals[window.colMap.iqc]).trim() : "Chưa kiểm tra";
+        var currentKP = (vals[window.colMap.kp] !== undefined && vals[window.colMap.kp] !== null && String(vals[window.colMap.kp]).trim() !== "") ? String(vals[window.colMap.kp]).trim() : "Chưa xử lý";
+
+        var isOk = currentIQC.toUpperCase().includes("OK") && !currentIQC.toUpperCase().includes("NOT");
+        var isDaXuLy = currentKP.toLowerCase().includes("đã");
+
+        if (isOk || isDaXuLy) {
+          return false;
+        }
+
+        return true;
+      });
+
+      renderDashboard(filteredRows);
+      updateSummary(globalData.rows);
+      updateTopLists(globalData.rows);
+    }
+
+    function updateSummary(rows) {
+      var cm = window.colMap;
+      var total = rows.length;
+      var iqcChuaKiemTra = 0;
+      var kpChuaXuLy = 0;
+      var doneCount = 0;
+
+      rows.forEach(r => {
+        var vals = r.values;
+        var iqcVal = vals[cm.iqc] !== undefined && vals[cm.iqc] !== null && String(vals[cm.iqc]).trim() !== "" ? String(vals[cm.iqc]).trim() : "Chưa kiểm tra";
+        var kpVal = vals[cm.kp] !== undefined && vals[cm.kp] !== null && String(vals[cm.kp]).trim() !== "" ? String(vals[cm.kp]).trim() : "Chưa xử lý";
+
+        var isOk = iqcVal.toUpperCase().includes("OK") && !iqcVal.toUpperCase().includes("NOT");
+        var isDaXuLy = kpVal.toLowerCase().includes("đã");
+
+        if (iqcVal.toLowerCase().includes("chưa kiểm tra") || (iqcVal.toUpperCase().includes("NOT OK") && !isDaXuLy)) iqcChuaKiemTra++;
+        if (kpVal.toLowerCase().includes("chưa")) kpChuaXuLy++;
+        if (isOk || isDaXuLy) doneCount++;
+      });
+
+      document.getElementById('sum-total').innerText = total;
+      document.getElementById('sum-iqc-notok').innerText = iqcChuaKiemTra;
+      document.getElementById('sum-kp-chua').innerText = kpChuaXuLy;
+      document.getElementById('sum-done').innerText = doneCount;
+    }
+
+    function renderDashboard(rows) {
+      var cm = window.colMap;
+      var bodyHtml = "";
+
+      rows.forEach(function(rowObj) {
+        var rIdx = rowObj.rowIndex;
+        var vals = rowObj.values;
+
+        var vungVal = (cm.vung !== -1) ? (vals[cm.vung] || "") : "";
+        var doitacVal = (cm.doitac !== -1) ? (vals[cm.doitac] || "") : "";
+        var doitruongVal = (vals[cm.doitruong] || "");
+        var blockVal = (cm.block !== -1) ? (vals[cm.block] || "") : "";
+        var hopdongVal = (cm.hopdong !== -1) ? (vals[cm.hopdong] || "") : "";
+
+        var currentIQC = (vals[cm.iqc] !== undefined && vals[cm.iqc] !== null && String(vals[cm.iqc]).trim() !== "") ? vals[cm.iqc] : "Chưa kiểm tra";
+        var currentKP = (vals[cm.kp] !== undefined && vals[cm.kp] !== null && String(vals[cm.kp]).trim() !== "") ? vals[cm.kp] : "Chưa xử lý";
+
+        var isOk = String(currentIQC).toUpperCase().includes("OK") && !String(currentIQC).toUpperCase().includes("NOT");
+
+        bodyHtml += "<tr id='row-item-" + rIdx + "'>";
+        bodyHtml += "<td>" + vungVal + "</td>";
+        bodyHtml += "<td>" + doitacVal + "</td>";
+        bodyHtml += "<td>" + doitruongVal + "</td>";
+        bodyHtml += "<td>" + blockVal + "</td>";
+        bodyHtml += "<td>" + hopdongVal + "</td>";
+        bodyHtml += "<td>" + currentIQC + "</td>";
+        bodyHtml += "<td>" + currentKP + "</td>";
+
+        bodyHtml += "<td>" +
+                    "<select class='action-sel' id='iqc-sel-" + rIdx + "' onchange='onIqcChangeAction(" + rIdx + ")'>" +
+                      "<option value='Chưa kiểm tra' " + (currentIQC === 'Chưa kiểm tra' ? 'selected' : '') + ">Chưa kiểm tra</option>" +
+                      "<option value='NOT OK' " + (currentIQC === 'NOT OK' ? 'selected' : '') + ">NOT OK</option>" +
+                      "<option value='OK' " + (currentIQC === 'OK' ? 'selected' : '') + ">OK</option>" +
+                    "</select> " +
+                    "<button class='btn btn-iqc' onclick='submitIQC(" + rIdx + ")'>Gửi</button>" +
+                    "</td>";
+
+        bodyHtml += "<td id='kp-cell-" + rIdx + "' class='" + (isOk ? 'hidden-cell' : '') + "'>" +
+                    "<select class='action-sel' id='kp-sel-" + rIdx + "'>" +
+                      "<option value='Chưa xử lý' " + (currentKP === 'Chưa xử lý' || currentKP === 'Chưa Khắc Phục' ? 'selected' : '') + ">Chưa xử lý</option>" +
+                      "<option value='Đã xử lý' " + (currentKP === 'Đã xử lý' || currentKP === 'Đã Khắc Phục' ? 'selected' : '') + ">Đã xử lý</option>" +
+                    "</select> " +
+                    "<button class='btn btn-kp' onclick='submitKP(" + rIdx + ")'>Gửi</button>" +
+                    "</td>";
+
+        bodyHtml += "</tr>";
+      });
+
+      document.getElementById('table-body').innerHTML = bodyHtml;
+    }
+
+    function onIqcChangeAction(rowIndex) {
+      var val = document.getElementById('iqc-sel-' + rowIndex).value;
+      var kpCell = document.getElementById('kp-cell-' + rowIndex);
+      if (val === 'OK') {
+        kpCell.classList.add('hidden-cell');
+      } else {
+        kpCell.classList.remove('hidden-cell');
+      }
+    }
+
+    function submitIQC(rowIndex) {
+      var status = document.getElementById('iqc-sel-' + rowIndex).value;
+      sessionStorage.removeItem('iqc_cache_data_v6000');
+
+      fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({ type: "iqc", rowIndex: rowIndex, status: status, logCol: "BF" })
+      })
+      .then(res => res.json())
+      .then(res => {
+        if (res.success) {
+          alert("✅ Đã cập nhật IQC và ghi log vào cột BF thành công!");
+          document.getElementById('row-item-' + rowIndex).classList.add('hidden-row');
+        } else {
+          alert("❌ Lỗi: " + res.message);
+        }
+      })
+      .catch(err => alert("❌ Lỗi kết nối API: " + err));
+    }
+
+    function submitKP(rowIndex) {
+      var status = document.getElementById('kp-sel-' + rowIndex).value;
+      sessionStorage.removeItem('iqc_cache_data_v6000');
+
+      fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({ type: "kp", rowIndex: rowIndex, status: status, logCol: "BF" })
+      })
+      .then(res => res.json())
+      .then(res => {
+        if (res.success) {
+          alert("✅ Đã cập nhật khắc phục và ghi log vào cột BF thành công!");
+          document.getElementById('row-item-' + rowIndex).classList.add('hidden-row');
+        } else {
+          alert("❌ Lỗi: " + res.message);
+        }
+      })
+      .catch(err => alert("❌ Lỗi kết nối API: " + err));
+    }
+  </script>
+</body>
+</html>
