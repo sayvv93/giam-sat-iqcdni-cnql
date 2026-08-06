@@ -13,7 +13,6 @@
         .tab-content-section { display: none; }
         .tab-content-section.active { display: block; }
         
-        /* Khung card cầu thủ bóng đá cho Đội trưởng */
         .player-card { 
             background: #fff; 
             border: 2px solid #e9ecef; 
@@ -44,7 +43,6 @@
             font-weight: 600;
         }
 
-        /* Style cho Dashboard Báo Cáo Đối Tác - Đội Trưởng */
         .partner-section { background: #fff; border-radius: 8px; border: 1px solid #dee2e6; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); overflow: hidden; }
         .partner-header { background: #e9ecef; padding: 12px 20px; font-weight: bold; color: #343a40; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; }
     </style>
@@ -96,7 +94,10 @@
             <div class="card mb-4 shadow-sm">
                 <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
                     <span class="fw-bold text-secondary"><i class="fa-solid fa-filter me-2"></i>Bộ lọc phân cấp dữ liệu</span>
-                    <button class="btn btn-outline-danger btn-sm" onclick="resetFilters()"><i class="fa-solid fa-rotate-left me-1"></i> Reset bộ lọc</button>
+                    <div>
+                        <button class="btn btn-outline-primary btn-sm me-2" onclick="fetchSheetData()"><i class="fa-solid fa-sync me-1"></i> Tải lại dữ liệu mới</button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="resetFilters()"><i class="fa-solid fa-rotate-left me-1"></i> Reset bộ lọc</button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
@@ -161,7 +162,7 @@
                                 </tr>
                             </thead>
                             <tbody id="table-body">
-                                <tr><td colspan="11" class="text-center py-5 text-muted">Vui lòng chọn bộ lọc đến cấp <strong>Đội trưởng</strong> hoặc <strong>Nhân viên</strong> để kích hoạt tính năng chọn và gửi nhiều kết quả.</td></tr>
+                                <tr><td colspan="11" class="text-center py-5 text-muted">Đang tải dữ liệu...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -226,15 +227,13 @@
                     <h5 class="modal-title" id="modal-leader-title"><i class="fa-solid fa-user-tie me-2"></i>Hiệu quả công việc đội trưởng</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body" id="modal-leader-body">
-                    <!-- Nội dung chi tiết nhân sự sẽ được render tại đây -->
-                </div>
+                <div class="modal-body" id="modal-leader-body"></div>
             </div>
         </div>
     </div>
 
     <script>
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxgpBSG9IkPyASBknJtq1_cgjZV0WT0TpSS8FtgCLCBtoyj1ET-LCXGavSzNEPx6dIR/exec";
+        const WEB_APP_URL = "https://iqc-cache-worker.sayvv93.workers.dev/";
         
         let globalData = { headers: [], rows: [] };
         const COL = { VUNG: 0, DOITAC: 1, DOITRUONG: 2, BLOCK: 3, NHANVIEN: 4, HOPDONG: 5, NGAY_PTC: 6, CHECK: 7, HUONG_XY: 8, LOG: 9 };
@@ -270,27 +269,80 @@
             }
         }
 
+        // --- HÀM TẢI DỮ LIỆU TÍCH HỢP LOCALSTORAGE VÀ RETRY TỰ ĐỘNG ---
         function fetchSheetData() {
-            var callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
-            window[callbackName] = function(data) {
-                delete window[callbackName];
-                if (script.parentNode) script.parentNode.removeChild(script);
-                
-                if (data && data.rows) {
-                    globalData = data;
-                    updateDependentFilters();
-                    filterData();
-                } else {
-                    showError("Dữ liệu trả về từ Google Sheets không hợp lệ.");
-                }
-            };
+            let retries = 3;
+            let attempt = 0;
 
-            var script = document.createElement('script');
-            script.src = WEB_APP_URL + "?action=getData&callback=" + callbackName;
-            script.onerror = function() {
-                showError("Không thể kết nối đến Google Sheets API. Hãy kiểm tra lại URL triển khai.");
-            };
-            document.body.appendChild(script);
+            function tryFetch() {
+                attempt++;
+                var callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+                
+                if (!globalData.rows.length && attempt === 1) {
+                    document.getElementById('alert-container').innerHTML = `<div class="alert alert-info py-2">⏳ Đang tải dữ liệu mới từ Google Sheets...</div>`;
+                }
+
+                var script = document.createElement('script');
+                
+                let timeoutId = setTimeout(() => {
+                    cleanup();
+                    handleRetry();
+                }, 12000); // Timeout sau 12 giây nếu mạng treo
+
+                function cleanup() {
+                    clearTimeout(timeoutId);
+                    if (window[callbackName]) delete window[callbackName];
+                    if (script && script.parentNode) script.parentNode.removeChild(script);
+                }
+
+                window[callbackName] = function(data) {
+                    cleanup();
+                    if (data && data.rows) {
+                        globalData = data;
+                        try {
+                            localStorage.setItem('iqc_sheet_data', JSON.stringify(data));
+                            localStorage.setItem('iqc_sheet_time', Date.now());
+                        } catch (e) {
+                            console.warn("Không thể lưu LocalStorage", e);
+                        }
+                        document.getElementById('alert-container').innerHTML = `<div class="alert alert-success py-1 small mb-2">✅ Đã đồng bộ dữ liệu mới nhất thành công lúc ${new Date().toLocaleTimeString()}</div>`;
+                        setTimeout(() => { document.getElementById('alert-container').innerHTML = ''; }, 3000);
+                        
+                        updateDependentFilters();
+                        filterData();
+                    } else {
+                        handleRetry();
+                    }
+                };
+
+                script.src = WEB_APP_URL + "?action=getData&callback=" + callbackName;
+                script.onerror = function() {
+                    cleanup();
+                    handleRetry();
+                };
+                document.body.appendChild(script);
+            }
+
+            function handleRetry() {
+                if (attempt < retries) {
+                    console.warn(`Lần thử kết nối ${attempt} thất bại. Đang thử lại lần ${attempt + 1}...`);
+                    setTimeout(tryFetch, 2000);
+                } else {
+                    let cached = localStorage.getItem('iqc_sheet_data');
+                    if (cached) {
+                        try {
+                            globalData = JSON.parse(cached);
+                            updateDependentFilters();
+                            filterData();
+                            document.getElementById('alert-container').innerHTML = `<div class="alert alert-warning py-2">⚠️ Mạng chậm hoặc lỗi kết nối Google Sheets. Đang hiển thị dữ liệu lưu tạm trước đó.</div>`;
+                            return;
+                        } catch(e) {}
+                    }
+                    showError("Không thể kết nối đến Google Sheets API sau nhiều lần thử. Hãy kiểm tra lại kết nối mạng hoặc URL triển khai.");
+                }
+            }
+
+            tryFetch();
         }
 
         function showError(msg) {
@@ -610,11 +662,9 @@
                 updates.push({ rowIndex, checkVal, xuLyVal });
             });
 
-            // Lấy thông tin filter đang chọn để ghi vào log cho rõ ngữ cảnh thao tác
             let activeDoiTruong = document.getElementById('filter-doitruong').value || "Chung";
             let activeNhanVien = document.getElementById('filter-nhanvien').value || "Tất cả NV";
             
-            // Tạo chuỗi thời gian ghi log hiện tại
             let now = new Date();
             let timeStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
@@ -624,7 +674,6 @@
             document.getElementById('alert-container').innerHTML = `<div class="alert alert-info">⏳ Đang cập nhật ${total} dòng lên Google Sheets và ghi log cột J...</div>`;
 
             updates.forEach(item => {
-                // Tạo nội dung Log thao tác cho cột J
                 let actionDesc = item.checkVal === "Đã đạt chuẩn 6 hình" ? "Check: Đã đạt chuẩn 6 hình" : `Check: ${item.checkVal}${item.xuLyVal ? ' | Xử lý: ' + item.xuLyVal : ''}`;
                 let logContent = `[${timeStr}] ĐT: ${activeDoiTruong} | NV: ${activeNhanVien} | ${actionDesc}`;
 
@@ -637,24 +686,27 @@
                     if (rowObj) {
                         if (item.checkVal) rowObj.values[COL.CHECK] = item.checkVal;
                         if (item.xuLyVal) rowObj.values[COL.HUONG_XY] = item.xuLyVal;
-                        rowObj.values[COL.LOG] = logContent; // Cập nhật log trên client
+                        rowObj.values[COL.LOG] = logContent;
                     }
 
                     count++;
                     if (count === total) {
-                        document.getElementById('alert-container').innerHTML = `<div class="alert alert-success">✅ Cập nhật thành công ${total} dòng, đã ghi log vào cột J và ẩn các mục hoàn thành!</div>`;
+                        try {
+                            localStorage.setItem('iqc_sheet_data', JSON.stringify(globalData));
+                        } catch(e) {}
+                        
+                        document.getElementById('alert-container').innerHTML = `<div class="alert alert-success">✅ Cập nhật thành công ${total} dòng, đã ghi log vào cột J!</div>`;
                         setTimeout(() => { document.getElementById('alert-container').innerHTML = ''; }, 3000);
                         filterData(); 
                     }
                 };
 
                 var script = document.createElement('script');
-                // Gửi thêm tham số logVal lên Apps Script để ghi vào cột J
                 script.src = `${WEB_APP_URL}?action=updateData&rowIndex=${item.rowIndex}&checkVal=${encodeURIComponent(item.checkVal)}&xuLyVal=${encodeURIComponent(item.xuLyVal)}&logVal=${encodeURIComponent(logContent)}&callback=${callbackName}`;
                 script.onerror = function() {
                     count++;
                     if (count === total) {
-                        document.getElementById('alert-container').innerHTML = `<div class="alert alert-danger">❌ Có lỗi xảy ra khi cập nhật.</div>`;
+                        document.getElementById('alert-container').innerHTML = `<div class="alert alert-danger">❌ Có lỗi xảy ra khi cập nhật lên Google Sheets.</div>`;
                     }
                 };
                 document.body.appendChild(script);
@@ -734,7 +786,6 @@
             }).join('');
         }
 
-        // --- DASHBOARD BÁO CÁO THEO ĐỐI TÁC & ĐỘI TRƯỞNG (DẠNG THẺ CẦU THỦ 4 CHỈ SỐ) ---
         function initReportFilters() {
             let setThang = new Set(), setDoitac = new Set();
             globalData.rows.forEach(r => {
@@ -774,7 +825,7 @@
 
                 let leader = v[COL.DOITRUONG] ? String(v[COL.DOITRUONG]).trim() : "Chưa xác định đội trưởng";
                 let employee = v[COL.NHANVIEN] ? String(v[COL.NHANVIEN]).trim() : "Chưa phân công";
-                let status = getRecordStatus(v); // "HOAN_THANH", "CHUA_KIEM_TRA", hoặc "CHUA_XU_LY"
+                let status = getRecordStatus(v);
 
                 if (!reportLeaderDataStore[partner]) {
                     reportLeaderDataStore[partner] = { 
@@ -938,7 +989,19 @@
             myModal.show();
         }
 
+        // --- KHỞI ĐỘI ỨNG DỤNG ---
         window.onload = function() {
+            // Bước 1: Load dữ liệu từ LocalStorage ngay lập tức nếu có để hiện giao diện siêu nhanh
+            let cached = localStorage.getItem('iqc_sheet_data');
+            if (cached) {
+                try {
+                    globalData = JSON.parse(cached);
+                    updateDependentFilters();
+                    filterData();
+                } catch(e) {}
+            }
+
+            // Bước 2: Gọi ngầm hoặc tải mới dữ liệu từ Google Sheets kèm cơ chế retry tự động
             fetchSheetData();
         };
     </script>
