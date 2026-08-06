@@ -6,130 +6,210 @@
     <title>Hệ Thống Giám Sát & Quản Lý Hợp Đồng IQC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Thư viện biểu đồ Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .container-fluid { padding: 20px; }
-        .card-stat { background: #fff; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px; border-left: 4px solid #0d6efd; }
-        .tab-content-section { display: none; }
-        .tab-content-section.active { display: block; }
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .container-fluid { max-width: 1700px; padding: 20px; }
         
-        /* Thu nhỏ khung card nhân viên để hiển thị nhiều hơn */
-        .player-card { 
-            background: #fff; 
-            border: 1px solid #dee2e6; 
-            border-radius: 8px; 
-            padding: 10px 12px; 
-            margin-bottom: 12px; 
-            transition: all 0.2s ease-in-out; 
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        /* Hiệu ứng chạy chữ marquee */
+        .marquee-container {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            color: #ffffff;
+            padding: 10px 0;
+            overflow: hidden;
+            white-space: nowrap;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
         }
-        .player-card:hover { 
-            box-shadow: 0 4px 8px rgba(13, 110, 253, 0.15); 
-            border-color: #0d6efd; 
-            transform: translateY(-2px);
+        .marquee-text {
+            display: inline-block;
+            padding-left: 100%;
+            animation: marquee 25s linear infinite;
+            font-weight: 800;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            color: #38bdf8;
+            text-transform: uppercase;
         }
-        .player-card .leader-name {
-            font-size: 0.9rem;
-            font-weight: bold;
-            color: #212529;
-            border-bottom: 1px solid #f8f9fa;
-            padding-bottom: 6px;
-            margin-bottom: 8px;
+        .marquee-container:hover .marquee-text {
+            animation-play-state: paused;
+        }
+        @keyframes marquee {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-100%, 0); }
         }
 
-        .partner-section { background: #fff; border-radius: 8px; border: 1px solid #dee2e6; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); overflow: hidden; }
-        .partner-header { background: #e9ecef; padding: 12px 20px; font-weight: bold; color: #343a40; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; }
+        .card-stat { background: #fff; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .tab-content-section { display: none; }
+        .tab-content-section.active { display: block; }
+
+        /* Giao diện Thẻ nhân viên E-commerce cho Report IQC */
+        .product-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            cursor: pointer;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.12);
+            border-color: #2563eb;
+        }
+        .product-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            font-size: 0.7rem;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+        .staff-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+        .staff-meta {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+
+        /* Tooltip thông số hiển thị khi trỏ chuột */
+        .custom-tooltip {
+            visibility: hidden;
+            background-color: #1e293b;
+            color: #fff;
+            text-align: left;
+            border-radius: 8px;
+            padding: 12px;
+            position: absolute;
+            z-index: 100;
+            bottom: 105%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 220px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+            font-size: 0.75rem;
+            pointer-events: none;
+        }
+        .custom-tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -6px;
+            border-width: 6px;
+            border-style: solid;
+            border-color: #1e293b transparent transparent transparent;
+        }
+        .product-card:hover .custom-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        .chart-container { position: relative; height: 320px; width: 100%; background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
     </style>
 </head>
 <body>
     <div class="container-fluid">
-        <h2 class="text-center mb-4 fw-bold text-primary">HỆ THỐNG GIÁM SÁT & QUẢN LÝ HỢP ĐỒNG IQC</h2>
-        
-        <div id="alert-container"></div>
-
-        <!-- Điều hướng Tab -->
-        <div class="mb-4 text-center">
-            <button class="btn btn-primary active px-3" id="btn-tab-dashboard" onclick="switchTab('dashboard')"><i class="fa-solid fa-chart-pie me-2"></i>Dashboard IQC</button>
-            <button class="btn btn-outline-secondary px-3 ms-2" id="btn-tab-daily" onclick="switchTab('daily')"><i class="fa-solid fa-calendar-day me-2"></i>Dashboard Ngày</button>
-            <button class="btn btn-outline-secondary px-3 ms-2" id="btn-tab-report" onclick="switchTab('report')"><i class="fa-solid fa-chart-column me-2"></i>Báo Cáo Đối Tác & Đội Trưởng</button>
+        <!-- TIÊU ĐỀ CHẠY CHỮ MARQUEE -->
+        <div class="marquee-container">
+            <div class="marquee-text">
+                <i class="fa-solid fa-shield-halved me-2"></i> HỆ THỐNG GIÁM SÁT & QUẢN LÝ HỢP ĐỒNG CHI NHÁNH DNI <i class="fa-solid fa-chart-line ms-4 me-2"></i> CHÀO MỪNG BẠN ĐẾN VỚI HỆ THỐNG QUẢN LÝ TẬP TRUNG
+            </div>
         </div>
 
-        <!-- TAB 1: DASHBOARD TỔNG -->
-        <div id="section-dashboard" class="tab-content-section active">
-            <div class="row text-center mb-3">
-                <div class="col-md-3">
-                    <div class="card-stat border-primary">
-                        <h6 class="text-muted fw-bold">CHƯA KIỂM TRA</h6>
-                        <h3 id="sum-chuakiemtra" class="text-primary mb-0">0</h3>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card-stat border-warning">
-                        <h6 class="text-muted fw-bold">CHƯA XỬ LÝ</h6>
-                        <h3 id="sum-chuaxuly" class="text-warning mb-0">0</h3>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card-stat border-success">
-                        <h6 class="text-muted fw-bold">ĐÃ HOÀN THÀNH</h6>
-                        <h3 id="sum-hoanthanh" class="text-success mb-0">0</h3>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card-stat border-secondary">
-                        <h6 class="text-muted fw-bold">TỔNG SỐ LƯỢNG</h6>
-                        <h3 id="sum-tong" class="text-secondary mb-0">0</h3>
-                    </div>
+        <div id="alert-container"></div>
+
+        <!-- ĐIỀU HƯỚNG TAB: "IQC" VÀ "Report IQC" -->
+        <div class="mb-4 text-center">
+            <button class="btn btn-primary active px-4 fw-bold" id="btn-tab-iqc" onclick="switchTab('iqc')"><i class="fa-solid fa-laptop me-2"></i>IQC</button>
+            <button class="btn btn-outline-secondary px-4 ms-2 fw-bold" id="btn-tab-report" onclick="switchTab('report')"><i class="fa-solid fa-chart-pie me-2"></i>Report IQC</button>
+        </div>
+
+        <!-- 4 THẺ THỐNG KÊ PHÍA TRÊN -->
+        <div class="row text-center">
+            <div class="col-md-3">
+                <div class="card-stat border-start border-primary border-4">
+                    <h6 class="text-muted fw-bold small">CHƯA KIỂM TRA</h6>
+                    <h3 id="sum-chuakiemtra" class="text-primary mb-0 fw-bold">0</h3>
                 </div>
             </div>
-
-            <!-- Bộ lọc phân cấp -->
-            <div class="card mb-4 shadow-sm">
-                <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
-                    <span class="fw-bold text-secondary"><i class="fa-solid fa-filter me-2"></i>Bộ lọc phân cấp dữ liệu</span>
-                    <div>
-                        <button class="btn btn-outline-primary btn-sm me-2" onclick="fetchSheetData()"><i class="fa-solid fa-sync me-1"></i> Tải lại dữ liệu mới</button>
-                        <button class="btn btn-outline-danger btn-sm" onclick="resetFilters()"><i class="fa-solid fa-rotate-left me-1"></i> Reset bộ lọc</button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold small">1. Tháng</label>
-                            <select id="filter-thang" class="form-select form-select-sm" onchange="onFilterChange('thang')"><option value="">Tất cả</option></select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold small">2. Vùng (A)</label>
-                            <select id="filter-vung" class="form-select form-select-sm" onchange="onFilterChange('vung')"><option value="">Tất cả</option></select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold small">3. Đối tác quản lý (B)</label>
-                            <select id="filter-doitac" class="form-select form-select-sm" onchange="onFilterChange('doitac')"><option value="">Tất cả</option></select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold small text-primary">4. Đội trưởng (C) *</label>
-                            <select id="filter-doitruong" class="form-select form-select-sm border-primary" onchange="onFilterChange('doitruong')"><option value="">-- Chọn Đội trưởng --</option></select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold small">5. Block quản lý (D)</label>
-                            <select id="filter-block" class="form-select form-select-sm" onchange="onFilterChange('block')"><option value="">Tất cả</option></select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold small text-danger">6. Nhân viên (E) *</label>
-                            <select id="filter-nhanvien" class="form-select form-select-sm border-danger" onchange="onFilterChange('nhanvien')"><option value="">-- Chọn Nhân viên --</option></select>
-                        </div>
-                    </div>
+            <div class="col-md-3">
+                <div class="card-stat border-start border-warning border-4">
+                    <h6 class="text-muted fw-bold small">CHƯA XỬ LÝ</h6>
+                    <h3 id="sum-chuaxuly" class="text-warning mb-0 fw-bold">0</h3>
                 </div>
             </div>
+            <div class="col-md-3">
+                <div class="card-stat border-start border-success border-4">
+                    <h6 class="text-muted fw-bold small">ĐÃ HOÀN THÀNH</h6>
+                    <h3 id="sum-hoanthanh" class="text-success mb-0 fw-bold">0</h3>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card-stat border-start border-secondary border-4">
+                    <h6 class="text-muted fw-bold small">TỔNG SỐ LƯỢNG</h6>
+                    <h3 id="sum-tong" class="text-secondary mb-0 fw-bold">0</h3>
+                </div>
+            </div>
+        </div>
 
-            <!-- Bảng dữ liệu tồn đọng -->
-            <div class="card shadow-sm">
+        <!-- BỘ LỌC PHÂN CẤP DỮ LIỆU 6 CẤP ĐỘ -->
+        <div class="card card-stat border-0 shadow-sm mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                <span class="fw-bold text-dark"><i class="fa-solid fa-filter me-2 text-primary"></i>Bộ lọc phân cấp dữ liệu</span>
+                <div>
+                    <button class="btn btn-outline-primary btn-sm me-2 fw-bold" onclick="fetchSheetData()"><i class="fa-solid fa-sync me-1"></i> Tải lại dữ liệu mới</button>
+                    <button class="btn btn-outline-danger btn-sm fw-bold" onclick="resetAllFilters()"><i class="fa-solid fa-rotate-left me-1"></i> Reset bộ lọc</button>
+                </div>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small text-muted">1. Tháng</label>
+                    <select id="global-filter-thang" class="form-select form-select-sm" onchange="onGlobalFilterChange('thang')"><option value="">Tất cả</option></select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small text-muted">2. Vùng (A)</label>
+                    <select id="global-filter-vung" class="form-select form-select-sm" onchange="onGlobalFilterChange('vung')"><option value="">Tất cả</option></select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small text-muted">3. Đối tác quản lý (B)</label>
+                    <select id="global-filter-doitac" class="form-select form-select-sm" onchange="onGlobalFilterChange('doitac')"><option value="">Tất cả</option></select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small text-primary">4. Đội trưởng (C) *</label>
+                    <select id="global-filter-doitruong" class="form-select form-select-sm border-primary" onchange="onGlobalFilterChange('doitruong')"><option value="">Tất cả</option></select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small text-muted">5. Block quản lý (D)</label>
+                    <select id="global-filter-block" class="form-select form-select-sm" onchange="onGlobalFilterChange('block')"><option value="">Tất cả</option></select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small text-primary">6. Nhân viên (E) *</label>
+                    <select id="global-filter-nhanvien" class="form-select form-select-sm border-primary" onchange="onGlobalFilterChange('nhanvien')"><option value="">-- Chọn Nhân viên --</option></select>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 1: IQC (DASHBOARD GỐC) -->
+        <div id="section-iqc" class="tab-content-section active">
+            <div class="card shadow-sm mb-4">
                 <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
-                    <span><i class="fa-solid fa-list-check me-2"></i>Danh sách dữ liệu tồn đọng xử lý</span>
+                    <span class="fw-bold"><i class="fa-solid fa-list-check me-2"></i>Danh sách dữ liệu tồn đọng xử lý (Chọn tối đa 5 dòng)</span>
                     <div>
-                        <button id="btn-bulk-submit" class="btn btn-sm btn-success me-2" onclick="bulkSubmit()" disabled><i class="fa-solid fa-paper-plane me-1"></i> Gửi dữ liệu đã chọn</button>
-                        <label class="small me-1 text-white">Hiển thị:</label>
+                        <button id="btn-bulk-submit" class="btn btn-sm btn-success me-2 fw-bold" onclick="bulkSubmit()"><i class="fa-solid fa-paper-plane me-1"></i> Gửi dữ liệu đã chọn</button>
+                        <label class="small me-1">Hiển thị:</label>
                         <select id="select-limit" class="form-select form-select-sm d-inline-block w-auto" onchange="filterData()">
                             <option value="50">50 dòng</option>
                             <option value="100">100 dòng</option>
@@ -137,13 +217,16 @@
                         </select>
                     </div>
                 </div>
+                <div class="card-body bg-light py-2 border-bottom" id="filter-warning-container">
+                    <!-- Khu vực cảnh báo điều kiện lọc -->
+                </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive" style="max-height: 550px; overflow-y: auto;">
+                    <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
                         <table class="table table-striped table-hover align-middle mb-0 small">
                             <thead class="table-secondary sticky-top">
                                 <tr>
-                                    <th><input type="checkbox" id="select-all" onclick="toggleSelectAll(this)" disabled></th>
-                                    <th>STT</th>
+                                    <th style="width: 40px;"><input type="checkbox" id="select-all" onclick="toggleSelectAll(this)"></th>
+                                    <th style="width: 50px;">STT</th>
                                     <th>Vùng</th>
                                     <th>Đối tác</th>
                                     <th>Đội trưởng</th>
@@ -151,12 +234,12 @@
                                     <th>Nhân viên</th>
                                     <th>Số hợp đồng</th>
                                     <th>Ngày PTC</th>
-                                    <th>Kết quả Check (H)</th>
-                                    <th>Hướng xử lý chưa đạt chuẩn (I)</th>
+                                    <th style="width: 200px;">Kết quả Check (H)</th>
+                                    <th style="width: 250px;">Hướng xử lý chưa đạt chuẩn (I)</th>
                                 </tr>
                             </thead>
                             <tbody id="table-body">
-                                <tr><td colspan="11" class="text-center py-5 text-muted">Đang tải dữ liệu...</td></tr>
+                                <tr><td colspan="11" class="text-center py-4 text-muted">Vui lòng chọn Đội trưởng hoặc Nhân viên ở bộ lọc để hiển thị dữ liệu...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -164,64 +247,43 @@
             </div>
         </div>
 
-        <!-- TAB 2: DASHBOARD NGÀY (THỐNG KÊ THEO NHÂN VIÊN) -->
-        <div id="section-daily" class="tab-content-section">
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <div class="row g-3 align-items-center">
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold small">Chọn Tháng:</label>
-                            <select id="daily-filter-thang" class="form-select form-select-sm" onchange="renderDailyDashboard()"><option value="">Tất cả các tháng</option></select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold small">Chọn Ngày:</label>
-                            <select id="daily-filter-ngay" class="form-select form-select-sm" onchange="renderDailyDashboard()"><option value="">Tất cả các ngày</option></select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold small">Chọn Đội Trưởng:</label>
-                            <select id="daily-filter-doitruong" class="form-select form-select-sm" onchange="renderDailyDashboard()"><option value="">Tất cả đội trưởng</option></select>
-                        </div>
-                        <div class="col-md-3 text-end d-flex align-items-end justify-content-end">
-                            <button class="btn btn-outline-secondary btn-sm" onclick="resetDailyFilters()"><i class="fa-solid fa-rotate-left me-1"></i> Xóa bộ lọc ngày</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div id="player-cards-container" class="row"></div>
-        </div>
-
-        <!-- TAB 3: DASHBOARD BÁO CÁO THEO ĐỐI TÁC & ĐỘI TRƯỞNG -->
+        <!-- TAB 2: Report IQC (GỘP BIỂU ĐỒ & E-COMMERCE CARDS) -->
         <div id="section-report" class="tab-content-section">
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <div class="row g-3 align-items-center">
-                        <div class="col-md-5">
-                            <label class="form-label fw-bold small">Chọn Tháng báo cáo:</label>
-                            <select id="report-filter-thang" class="form-select form-select-sm" onchange="renderReportDashboard()"><option value="">Tất cả các tháng</option></select>
-                        </div>
-                        <div class="col-md-5">
-                            <label class="form-label fw-bold small">Chọn Đối tác quản lý:</label>
-                            <select id="report-filter-doitac" class="form-select form-select-sm" onchange="renderReportDashboard()"><option value="">Tất cả đối tác</option></select>
-                        </div>
-                        <div class="col-md-2 text-end d-flex align-items-end justify-content-end">
-                            <button class="btn btn-outline-secondary btn-sm w-100" onclick="resetReportFilters()"><i class="fa-solid fa-rotate-left me-1"></i> Xóa lọc</button>
-                        </div>
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="chart-container">
+                        <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-chart-column text-primary me-2"></i>Biểu đồ hiệu suất theo Đội Trưởng</h6>
+                        <canvas id="leaderChart"></canvas>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="chart-container">
+                        <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-chart-pie text-success me-2"></i>Tỷ trọng khối lượng theo Đối Tác</h6>
+                        <canvas id="partnerChart"></canvas>
                     </div>
                 </div>
             </div>
-            <div id="report-container"></div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3 fw-bold text-dark">
+                    <i class="fa-solid fa-users-viewfinder me-2 text-primary"></i>Hiệu suất chi tiết Nhân Viên (Rê chuột vào thẻ để xem thông số)
+                </div>
+                <div class="card-body bg-light">
+                    <div id="staff-cards-container" class="row"></div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Modal Chi tiết -->
-    <div class="modal fade" id="leaderDetailModal" tabindex="-1">
+    <!-- Modal Chi Tiết Nhân Viên -->
+    <div class="modal fade" id="staffDetailModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="modal-leader-title"><i class="fa-solid fa-user-tie me-2"></i>Hiệu quả công việc</h5>
+                    <h5 class="modal-title fw-bold" id="modal-staff-title"><i class="fa-solid fa-user-gear me-2"></i>Chi tiết công việc</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body" id="modal-leader-body"></div>
+                <div class="modal-body" id="modal-staff-body"></div>
             </div>
         </div>
     </div>
@@ -229,81 +291,61 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const WEB_APP_URL = "https://iqc-cache-worker.sayvv93.workers.dev/";
-        
-        let globalData = { headers: [], rows: [] };
-        const COL = { VUNG: 0, DOITAC: 1, DOITRUONG: 2, BLOCK: 3, NHANVIEN: 4, HOPDONG: 5, NGAY_PTC: 6, CHECK: 7, HUONG_XY: 8, LOG: 9 };
+        let globalData = { rows: [] };
+        let leaderChartInstance = null;
+        let partnerChartInstance = null;
+        const COL = { VUNG: 0, DOITAC: 1, DOITRUONG: 2, BLOCK: 3, NHANVIEN: 4, HOPDONG: 5, NGAY_PTC: 6, CHECK: 7, HUONG_XY: 8 };
 
         function switchTab(tabName) {
             document.querySelectorAll('.tab-content-section').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.container-fluid .btn').forEach(el => {
+            document.querySelectorAll('.container-fluid .mb-4.text-center .btn').forEach(el => {
                 if(el.id.startsWith('btn-tab-')) {
                     el.classList.remove('btn-primary', 'active');
                     el.classList.add('btn-outline-secondary');
                 }
             });
 
-            if (tabName === 'dashboard') {
-                document.getElementById('section-dashboard').classList.add('active');
-                let btn = document.getElementById('btn-tab-dashboard');
+            if (tabName === 'iqc') {
+                document.getElementById('section-iqc').classList.add('active');
+                let btn = document.getElementById('btn-tab-iqc');
                 btn.classList.remove('btn-outline-secondary');
                 btn.classList.add('btn-primary', 'active');
-            } else if (tabName === 'daily') {
-                document.getElementById('section-daily').classList.add('active');
-                let btn = document.getElementById('btn-tab-daily');
-                btn.classList.remove('btn-outline-secondary');
-                btn.classList.add('btn-primary', 'active');
-                initDailyFilters();
-                renderDailyDashboard();
             } else if (tabName === 'report') {
                 document.getElementById('section-report').classList.add('active');
                 let btn = document.getElementById('btn-tab-report');
                 btn.classList.remove('btn-outline-secondary');
                 btn.classList.add('btn-primary', 'active');
-                initReportFilters();
-                renderReportDashboard();
+                renderReportContent();
             }
         }
 
         async function fetchSheetData() {
             document.getElementById('alert-container').innerHTML = `<div class="alert alert-info py-2">⏳ Đang tải dữ liệu mới từ hệ thống...</div>`;
-            
             try {
                 let response = await fetch(WEB_APP_URL + "?action=getData");
                 if (!response.ok) throw new Error("Lỗi kết nối HTTP: " + response.status);
-                
                 let data = await response.json();
-                
                 if (data && data.rows) {
                     globalData = data;
-                    try {
-                        localStorage.setItem('iqc_sheet_data', JSON.stringify(data));
-                        localStorage.setItem('iqc_sheet_time', Date.now());
-                    } catch (e) {
-                        console.warn("Không thể lưu LocalStorage", e);
-                    }
-                    
-                    document.getElementById('alert-container').innerHTML = `<div class="alert alert-success py-1 small mb-2">✅ Đã đồng bộ dữ liệu mới nhất thành công lúc ${new Date().toLocaleTimeString()}</div>`;
+                    localStorage.setItem('iqc_sheet_data', JSON.stringify(data));
+                    document.getElementById('alert-container').innerHTML = `<div class="alert alert-success py-1 small mb-2">✅ Đồng bộ dữ liệu thành công lúc ${new Date().toLocaleTimeString()}</div>`;
                     setTimeout(() => { document.getElementById('alert-container').innerHTML = ''; }, 3000);
-                    
-                    updateDependentFilters();
+                    updateGlobalFilters();
                     filterData();
+                    if(document.getElementById('section-report').classList.contains('active')) renderReportContent();
                 } else {
-                    throw new Error("Cấu trúc dữ liệu trả về không hợp lệ");
+                    throw new Error("Dữ liệu không hợp lệ");
                 }
             } catch (error) {
-                console.warn("Lỗi tải dữ liệu qua fetch, đang thử dùng dữ liệu cache...", error);
-                
                 let cached = localStorage.getItem('iqc_sheet_data');
                 if (cached) {
-                    try {
-                        globalData = JSON.parse(cached);
-                        updateDependentFilters();
-                        filterData();
-                        document.getElementById('alert-container').innerHTML = `<div class="alert alert-warning py-2">⚠️ Không thể kết nối mới. Đang hiển thị dữ liệu lưu tạm trước đó.</div>`;
-                        return;
-                    } catch(e) {}
+                    globalData = JSON.parse(cached);
+                    updateGlobalFilters();
+                    filterData();
+                    document.getElementById('alert-container').innerHTML = `<div class="alert alert-warning py-2">⚠️ Dùng dữ liệu lưu trữ cục bộ (Cache).</div>`;
+                    return;
                 }
-                showError("Không thể kết nối đến Google Sheets API. Hãy kiểm tra lại kết nối mạng hoặc URL triển khai.");
+                showError("Không thể kết nối đến hệ thống Google Sheets.");
             }
         }
 
@@ -335,103 +377,92 @@
             return { ngay, thang, formatted };
         }
 
-        function updateDependentFilters() {
-            let fThang = document.getElementById('filter-thang').value;
-            let fVung = document.getElementById('filter-vung').value;
-            let fDoitac = document.getElementById('filter-doitac').value;
-            let fDoitruong = document.getElementById('filter-doitruong').value;
-            let fBlock = document.getElementById('filter-block').value;
-            let fNhanvien = document.getElementById('filter-nhanvien').value;
+        function updateGlobalFilters() {
+            let fThang = document.getElementById('global-filter-thang').value;
+            let fVung = document.getElementById('global-filter-vung').value;
+            let fDoitac = document.getElementById('global-filter-doitac').value;
+            let fDoitruong = document.getElementById('global-filter-doitruong').value;
+            let fBlock = document.getElementById('global-filter-block').value;
+            let fNhanvien = document.getElementById('global-filter-nhanvien').value;
 
             let setThang = new Set(), setVung = new Set(), setDoitac = new Set(), setDoitruong = new Set(), setBlock = new Set(), setNhanvien = new Set();
 
             globalData.rows.forEach(r => {
-                let v = r.values;
-                let dt = getNgayThang(v[COL.NGAY_PTC]);
+                let dt = getNgayThang(r.values[COL.NGAY_PTC]);
                 if (dt.thang) setThang.add(dt.thang);
             });
 
-            let rowsForVung = globalData.rows.filter(r => !fThang || getNgayThang(r.values[COL.NGAY_PTC]).thang === fThang);
-            rowsForVung.forEach(r => { if (r.values[COL.VUNG]) setVung.add(String(r.values[COL.VUNG]).trim()); });
+            let r1 = globalData.rows.filter(r => !fThang || getNgayThang(r.values[COL.NGAY_PTC]).thang === fThang);
+            r1.forEach(r => { if (r.values[COL.VUNG]) setVung.add(String(r.values[COL.VUNG]).trim()); });
 
-            let rowsForDoitac = rowsForVung.filter(r => !fVung || String(r.values[COL.VUNG]).trim() === fVung);
-            rowsForDoitac.forEach(r => { if (r.values[COL.DOITAC]) setDoitac.add(String(r.values[COL.DOITAC]).trim()); });
+            let r2 = r1.filter(r => !fVung || String(r.values[COL.VUNG]).trim() === fVung);
+            r2.forEach(r => { if (r.values[COL.DOITAC]) setDoitac.add(String(r.values[COL.DOITAC]).trim()); });
 
-            let rowsForDoitruong = rowsForDoitac.filter(r => !fDoitac || String(r.values[COL.DOITAC]).trim() === fDoitac);
-            rowsForDoitruong.forEach(r => { if (r.values[COL.DOITRUONG]) setDoitruong.add(String(r.values[COL.DOITRUONG]).trim()); });
+            let r3 = r2.filter(r => !fDoitac || String(r.values[COL.DOITAC]).trim() === fDoitac);
+            r3.forEach(r => { if (r.values[COL.DOITRUONG]) setDoitruong.add(String(r.values[COL.DOITRUONG]).trim()); });
 
-            let rowsForBlock = rowsForDoitruong.filter(r => !fDoitruong || String(r.values[COL.DOITRUONG]).trim() === fDoitruong);
-            rowsForBlock.forEach(r => { if (r.values[COL.BLOCK]) setBlock.add(String(r.values[COL.BLOCK]).trim()); });
+            let r4 = r3.filter(r => !fDoitruong || String(r.values[COL.DOITRUONG]).trim() === fDoitruong);
+            r4.forEach(r => { if (r.values[COL.BLOCK]) setBlock.add(String(r.values[COL.BLOCK]).trim()); });
 
-            let rowsForNhanvien = rowsForBlock.filter(r => !fBlock || String(r.values[COL.BLOCK]).trim() === fBlock);
-            rowsForNhanvien.forEach(r => { if (r.values[COL.NHANVIEN]) setNhanvien.add(String(r.values[COL.NHANVIEN]).trim()); });
+            let r5 = r4.filter(r => !fBlock || String(r.values[COL.BLOCK]).trim() === fBlock);
+            r5.forEach(r => { if (r.values[COL.NHANVIEN]) setNhanvien.add(String(r.values[COL.NHANVIEN]).trim()); });
 
-            fillSelect('filter-thang', Array.from(setThang).sort(), fThang);
-            fillSelect('filter-vung', Array.from(setVung).sort(), fVung);
-            fillSelect('filter-doitac', Array.from(setDoitac).sort(), fDoitac);
-            
-            let selDoitruong = document.getElementById('filter-doitruong');
-            let dtArr = Array.from(setDoitruong).sort();
-            selDoitruong.innerHTML = '<option value="">-- Chọn Đội trưởng --</option>' + dtArr.map(x => `<option value="${x}">${x}</option>`).join('');
-            selDoitruong.value = dtArr.includes(fDoitruong) ? fDoitruong : "";
-
-            fillSelect('filter-block', Array.from(setBlock).sort(), fBlock);
-
-            let selNhanvien = document.getElementById('filter-nhanvien');
-            let nvArr = Array.from(setNhanvien).sort();
-            selNhanvien.innerHTML = '<option value="">-- Chọn Nhân viên --</option>' + nvArr.map(x => `<option value="${x}">${x}</option>`).join('');
-            selNhanvien.value = nvArr.includes(fNhanvien) ? fNhanvien : "";
+            fillSelect('global-filter-thang', Array.from(setThang).sort(), fThang, 'Tất cả');
+            fillSelect('global-filter-vung', Array.from(setVung).sort(), fVung, 'Tất cả');
+            fillSelect('global-filter-doitac', Array.from(setDoitac).sort(), fDoitac, 'Tất cả');
+            fillSelect('global-filter-doitruong', Array.from(setDoitruong).sort(), fDoitruong, 'Tất cả');
+            fillSelect('global-filter-block', Array.from(setBlock).sort(), fBlock, 'Tất cả');
+            fillSelect('global-filter-nhanvien', Array.from(setNhanvien).sort(), fNhanvien, '-- Chọn Nhân viên --');
         }
 
-        function fillSelect(id, arr, currentVal) {
+        function fillSelect(id, arr, currentVal, defaultText) {
             let sel = document.getElementById(id);
-            sel.innerHTML = '<option value="">Tất cả</option>' + arr.map(x => `<option value="${x}">${x}</option>`).join('');
+            sel.innerHTML = `<option value="">${defaultText}</option>` + arr.map(x => `<option value="${x}">${x}</option>`).join('');
             sel.value = arr.includes(currentVal) ? currentVal : "";
         }
 
-        function onFilterChange(level) {
+        function onGlobalFilterChange(level) {
             if (level === 'thang') {
-                document.getElementById('filter-vung').value = "";
-                document.getElementById('filter-doitac').value = "";
-                document.getElementById('filter-doitruong').value = "";
-                document.getElementById('filter-block').value = "";
-                document.getElementById('filter-nhanvien').value = "";
+                document.getElementById('global-filter-vung').value = "";
+                document.getElementById('global-filter-doitac').value = "";
+                document.getElementById('global-filter-doitruong').value = "";
+                document.getElementById('global-filter-block').value = "";
+                document.getElementById('global-filter-nhanvien').value = "";
             } else if (level === 'vung') {
-                document.getElementById('filter-doitac').value = "";
-                document.getElementById('filter-doitruong').value = "";
-                document.getElementById('filter-block').value = "";
-                document.getElementById('filter-nhanvien').value = "";
+                document.getElementById('global-filter-doitac').value = "";
+                document.getElementById('global-filter-doitruong').value = "";
+                document.getElementById('global-filter-block').value = "";
+                document.getElementById('global-filter-nhanvien').value = "";
             } else if (level === 'doitac') {
-                document.getElementById('filter-doitruong').value = "";
-                document.getElementById('filter-block').value = "";
-                document.getElementById('filter-nhanvien').value = "";
+                document.getElementById('global-filter-doitruong').value = "";
+                document.getElementById('global-filter-block').value = "";
+                document.getElementById('global-filter-nhanvien').value = "";
             } else if (level === 'doitruong') {
-                document.getElementById('filter-block').value = "";
-                document.getElementById('filter-nhanvien').value = "";
+                document.getElementById('global-filter-block').value = "";
+                document.getElementById('global-filter-nhanvien').value = "";
             } else if (level === 'block') {
-                document.getElementById('filter-nhanvien').value = "";
+                document.getElementById('global-filter-nhanvien').value = "";
             }
-
-            updateDependentFilters();
+            updateGlobalFilters();
             filterData();
+            if(document.getElementById('section-report').classList.contains('active')) renderReportContent();
         }
 
-        function resetFilters() {
-            document.getElementById('filter-thang').value = "";
-            document.getElementById('filter-vung').value = "";
-            document.getElementById('filter-doitac').value = "";
-            document.getElementById('filter-doitruong').value = "";
-            document.getElementById('filter-block').value = "";
-            document.getElementById('filter-nhanvien').value = "";
-            
-            updateDependentFilters();
+        function resetAllFilters() {
+            document.getElementById('global-filter-thang').value = "";
+            document.getElementById('global-filter-vung').value = "";
+            document.getElementById('global-filter-doitac').value = "";
+            document.getElementById('global-filter-doitruong').value = "";
+            document.getElementById('global-filter-block').value = "";
+            document.getElementById('global-filter-nhanvien').value = "";
+            updateGlobalFilters();
             filterData();
+            if(document.getElementById('section-report').classList.contains('active')) renderReportContent();
         }
 
         function getRecordStatus(vals) {
             let check = vals[COL.CHECK] ? String(vals[COL.CHECK]).trim() : "";
             let xuLy = vals[COL.HUONG_XY] ? String(vals[COL.HUONG_XY]).trim() : "";
-
             if (check === "" || check.toLowerCase().includes("chưa kiểm tra")) return "CHUA_KIEM_TRA";
             if (check.toLowerCase().includes("đã đạt chuẩn 6 hình")) return "HOAN_THANH";
             if (check.toLowerCase().includes("chưa đạt chuẩn")) {
@@ -441,46 +472,15 @@
             return "CHUA_KIEM_TRA";
         }
 
-        function updateSummary(allRows) {
-            let chuaKiemTra = 0, chuaXuLy = 0, hoanthanh = 0;
-            allRows.forEach(r => {
-                let status = getRecordStatus(r.values);
-                if (status === "HOAN_THANH") hoanthanh++;
-                else if (status === "CHUA_KIEM_TRA") chuaKiemTra++;
-                else if (status === "CHUA_XU_LY") chuaXuLy++;
-            });
-            document.getElementById('sum-chuakiemtra').innerText = chuaKiemTra;
-            document.getElementById('sum-chuaxuly').innerText = chuaXuLy;
-            document.getElementById('sum-hoanthanh').innerText = hoanthanh;
-            document.getElementById('sum-tong').innerText = allRows.length;
-        }
+        function getFilteredRows() {
+            let fThang = document.getElementById('global-filter-thang').value;
+            let fVung = document.getElementById('global-filter-vung').value;
+            let fDoitac = document.getElementById('global-filter-doitac').value;
+            let fDoitruong = document.getElementById('global-filter-doitruong').value;
+            let fBlock = document.getElementById('global-filter-block').value;
+            let fNhanvien = document.getElementById('global-filter-nhanvien').value;
 
-        function filterData() {
-            let fDoitruong = document.getElementById('filter-doitruong').value;
-            let fNhanvien = document.getElementById('filter-nhanvien').value;
-            let btnBulk = document.getElementById('btn-bulk-submit');
-            let selectAllCheckbox = document.getElementById('select-all');
-
-            let isAllowed = (fDoitruong !== "" || fNhanvien !== "");
-
-            if (!isAllowed) {
-                btnBulk.disabled = true;
-                selectAllCheckbox.disabled = true;
-                selectAllCheckbox.checked = false;
-                document.getElementById('table-body').innerHTML = `<tr><td colspan="11" class="text-center text-danger py-4 fw-bold">⚠️ Vui lòng chọn cụ thể ít nhất một <strong>Đội trưởng</strong> hoặc <strong>Nhân viên</strong> ở bộ lọc phía trên để kích hoạt tính năng chọn và gửi nhiều kết quả!</td></tr>`;
-                updateSummary(globalData.rows);
-                return;
-            }
-
-            btnBulk.disabled = false;
-            selectAllCheckbox.disabled = false;
-
-            let fThang = document.getElementById('filter-thang').value;
-            let fVung = document.getElementById('filter-vung').value;
-            let fDoitac = document.getElementById('filter-doitac').value;
-            let fBlock = document.getElementById('filter-block').value;
-
-            let filtered = globalData.rows.filter(r => {
+            return globalData.rows.filter(r => {
                 let v = r.values;
                 let dt = getNgayThang(v[COL.NGAY_PTC]);
                 if (fThang && dt.thang !== fThang) return false;
@@ -489,20 +489,69 @@
                 if (fDoitruong && String(v[COL.DOITRUONG]).trim() !== fDoitruong) return false;
                 if (fBlock && String(v[COL.BLOCK]).trim() !== fBlock) return false;
                 if (fNhanvien && String(v[COL.NHANVIEN]).trim() !== fNhanvien) return false;
-                if (getRecordStatus(v) === "HOAN_THANH") return false;
                 return true;
             });
+        }
 
-            updateSummary(globalData.rows);
+        function filterData() {
+            let fDoitruong = document.getElementById('global-filter-doitruong').value;
+            let fNhanvien = document.getElementById('global-filter-nhanvien').value;
+            let warningContainer = document.getElementById('filter-warning-container');
+
+            if (!fDoitruong && !fNhanvien) {
+                warningContainer.innerHTML = `
+                    <div class="alert alert-warning py-2 mb-0 small fw-bold">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Vui lòng chọn cụ thể <b>Đội trưởng</b> hoặc <b>Nhân viên</b> ở bộ lọc phía trên để hiển thị dữ liệu bảng và gửi kết quả! (Đã sum theo bộ lọc chung).
+                    </div>
+                `;
+                let currentFilteredRows = getFilteredRows();
+                let chuaKiemTra = 0, chuaXuLy = 0, hoanthanh = 0;
+                currentFilteredRows.forEach(r => {
+                    let status = getRecordStatus(r.values);
+                    if (status === "HOAN_THANH") hoanthanh++;
+                    else if (status === "CHUA_KIEM_TRA") chuaKiemTra++;
+                    else if (status === "CHUA_XU_LY") chuaXuLy++;
+                });
+
+                document.getElementById('sum-chuakiemtra').innerText = chuaKiemTra;
+                document.getElementById('sum-chuaxuly').innerText = chuaXuLy;
+                document.getElementById('sum-hoanthanh').innerText = hoanthanh;
+                document.getElementById('sum-tong').innerText = currentFilteredRows.length;
+
+                document.getElementById('table-body').innerHTML = `<tr><td colspan="11" class="text-center py-4 text-muted">Vui lòng chọn Đội trưởng hoặc Nhân viên ở bộ lọc để hiển thị chi tiết dữ liệu bảng...</td></tr>`;
+                return;
+            }
+
+            warningContainer.innerHTML = `
+                <div class="alert alert-success py-1 mb-0 small fw-bold">
+                    <i class="fa-solid fa-circle-check me-1"></i> Đã kích hoạt sum dữ liệu theo toàn bộ bộ lọc. Bạn có thể tích chọn <b>tối đa 5 dòng</b> và nhấn "Gửi dữ liệu đã chọn".
+                </div>
+            `;
+
+            let currentFilteredRows = getFilteredRows();
+            let chuaKiemTra = 0, chuaXuLy = 0, hoanthanh = 0;
+            currentFilteredRows.forEach(r => {
+                let status = getRecordStatus(r.values);
+                if (status === "HOAN_THANH") hoanthanh++;
+                else if (status === "CHUA_KIEM_TRA") chuaKiemTra++;
+                else if (status === "CHUA_XU_LY") chuaXuLy++;
+            });
+
+            document.getElementById('sum-chuakiemtra').innerText = chuaKiemTra;
+            document.getElementById('sum-chuaxuly').innerText = chuaXuLy;
+            document.getElementById('sum-hoanthanh').innerText = hoanthanh;
+            document.getElementById('sum-tong').innerText = currentFilteredRows.length;
+
+            let tableFiltered = currentFilteredRows.filter(r => getRecordStatus(r.values) !== "HOAN_THANH");
             let limit = document.getElementById('select-limit').value;
-            let displayRows = limit === 'all' ? filtered : filtered.slice(0, parseInt(limit));
+            let displayRows = limit === 'all' ? tableFiltered : tableFiltered.slice(0, parseInt(limit));
             renderTable(displayRows);
         }
 
         function renderTable(rows) {
             let tbody = document.getElementById('table-body');
             if (rows.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4">Không có dữ liệu tồn đọng phù hợp.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4">Không có dữ liệu tồn đọng cần xử lý cho phạm vi đã chọn.</td></tr>`;
                 return;
             }
 
@@ -535,7 +584,7 @@
 
                 return `
                     <tr>
-                        <td><input type="checkbox" class="row-checkbox" value="${r.rowIndex}"></td>
+                        <td><input type="checkbox" class="row-checkbox" value="${r.rowIndex}" onclick="checkMaxSelection(this)"></td>
                         <td>${idx + 1}</td>
                         <td>${v[COL.VUNG] || ''}</td>
                         <td>${v[COL.DOITAC] || ''}</td>
@@ -551,8 +600,26 @@
             }).join('');
         }
 
+        function checkMaxSelection(checkbox) {
+            let checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+            if (checkedBoxes.length > 5) {
+                alert("⚠️ Bạn chỉ được phép chọn tối đa 5 dòng mỗi lần gửi!");
+                checkbox.checked = false;
+            }
+        }
+
         function toggleSelectAll(master) {
-            document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = master.checked);
+            let checkboxes = document.querySelectorAll('.row-checkbox');
+            if (master.checked) {
+                if (checkboxes.length > 5) {
+                    alert("⚠️ Danh sách có hơn 5 dòng, không thể chọn tất cả cùng lúc (tối đa 5 dòng mỗi lần gửi)!");
+                    master.checked = false;
+                    return;
+                }
+                checkboxes.forEach(cb => cb.checked = true);
+            } else {
+                checkboxes.forEach(cb => cb.checked = false);
+            }
         }
 
         function onCheckResultChange(selectElem) {
@@ -573,9 +640,21 @@
         }
 
         async function bulkSubmit() {
+            let fDoitruong = document.getElementById('global-filter-doitruong').value;
+            let fNhanvien = document.getElementById('global-filter-nhanvien').value;
+
+            if (!fDoitruong && !fNhanvien) {
+                alert("⚠️ Vui lòng chọn cụ thể Đội trưởng hoặc Nhân viên ở bộ lọc phía trên trước khi gửi!");
+                return;
+            }
+
             let checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
             if (checkedBoxes.length === 0) {
-                alert("Vui lòng tích chọn ít nhất một dòng để gửi!");
+                alert("Vui lòng tích chọn ít nhất một dòng hợp đồng để gửi!");
+                return;
+            }
+            if (checkedBoxes.length > 5) {
+                alert("⚠️ Giới hạn hệ thống: Bạn chỉ được gửi tối đa 5 dòng mỗi lần!");
                 return;
             }
 
@@ -588,24 +667,18 @@
 
                 let valCheck = checkSel ? checkSel.value : "Chưa đạt chuẩn";
                 let valXuLy = xuLySel ? xuLySel.value : "";
-
-                if (!checkSel && !xuLySel) continue;
                 if (checkSel && !valCheck) {
-                    alert(`Vui lòng chọn kết quả check cho dòng hợp đồng ở STT ${tr.cells[1].innerText}`);
+                    alert(`Vui lòng chọn kết quả check tại dòng STT ${tr.cells[1].innerText}`);
                     return;
                 }
                 if (valCheck === 'Chưa đạt chuẩn' && !valXuLy) {
-                    alert(`Vui lòng chọn hướng xử lý cho dòng hợp đồng ở STT ${tr.cells[1].innerText}`);
+                    alert(`Vui lòng chọn hướng xử lý tại dòng STT ${tr.cells[1].innerText}`);
                     return;
                 }
-
                 updates.push({ rowIndex: rowIdx, check: valCheck, xuLy: valXuLy });
             }
 
-            if (updates.length === 0) return;
-
-            if (!confirm(`Bạn có chắc chắn muốn gửi cập nhật cho ${updates.length} dòng đã chọn?`)) return;
-
+            if (!confirm(`Xác nhận gửi cập nhật cho ${updates.length} dòng đã chọn?`)) return;
             document.getElementById('alert-container').innerHTML = `<div class="alert alert-info py-2">⏳ Đang gửi dữ liệu lên hệ thống...</div>`;
 
             try {
@@ -627,109 +700,106 @@
             }
         }
 
-        // --- TAB 2: DASHBOARD NGÀY (THỐNG KÊ THEO NHÂN VIÊN, SẮP XẾP TỒN CAO LÊN ĐẦU) ---
-        function initDailyFilters() {
-            let setThang = new Set(), setNgay = new Set(), setDoitruong = new Set();
-            globalData.rows.forEach(r => {
-                let dt = getNgayThang(r.values[COL.NGAY_PTC]);
-                if (dt.thang) setThang.add(dt.thang);
-                if (dt.ngay) setNgay.add(dt.ngay);
-                if (r.values[COL.DOITRUONG]) setDoitruong.add(String(r.values[COL.DOITRUONG]).trim());
-            });
+        function renderReportContent() {
+            let rows = getFilteredRows();
 
-            fillSelect('daily-filter-thang', Array.from(setThang).sort(), document.getElementById('daily-filter-thang').value);
-            fillSelect('daily-filter-ngay', Array.from(setNgay).sort(), document.getElementById('daily-filter-ngay').value);
-            fillSelect('daily-filter-doitruong', Array.from(setDoitruong).sort(), document.getElementById('daily-filter-doitruong').value);
-        }
+            let leaderStats = {};
+            let partnerStats = {};
+            let staffMap = {};
 
-        function resetDailyFilters() {
-            document.getElementById('daily-filter-thang').value = "";
-            document.getElementById('daily-filter-ngay').value = "";
-            document.getElementById('daily-filter-doitruong').value = "";
-            renderDailyDashboard();
-        }
-
-        function renderDailyDashboard() {
-            let fThang = document.getElementById('daily-filter-thang').value;
-            let fNgay = document.getElementById('daily-filter-ngay').value;
-            let fDoitruong = document.getElementById('daily-filter-doitruong').value;
-
-            let mapStaff = {};
-            globalData.rows.forEach(r => {
+            rows.forEach(r => {
                 let v = r.values;
-                let dt = getNgayThang(v[COL.NGAY_PTC]);
-                if (fThang && dt.thang !== fThang) return;
-                if (fNgay && dt.ngay !== fNgay) return;
-                let dtName = v[COL.DOITRUONG] ? String(v[COL.DOITRUONG]).trim() : "Chưa phân nhóm";
-                if (fDoitruong && dtName !== fDoitruong) return;
+                let leader = v[COL.DOITRUONG] ? String(v[COL.DOITRUONG]).trim() : "Khác";
+                let partner = v[COL.DOITAC] ? String(v[COL.DOITAC]).trim() : "Khác";
+                let staff = v[COL.NHANVIEN] ? String(v[COL.NHANVIEN]).trim() : "Chưa xác định";
 
-                let staffName = v[COL.NHANVIEN] ? String(v[COL.NHANVIEN]).trim() : "Chưa xác định";
+                if (!leaderStats[leader]) leaderStats[leader] = { total: 0, completed: 0 };
+                leaderStats[leader].total++;
+                if (getRecordStatus(v) === "HOAN_THANH") leaderStats[leader].completed++;
 
-                if (!mapStaff[staffName]) {
-                    mapStaff[staffName] = { 
-                        staff: staffName, 
-                        leader: dtName, 
-                        total: 0, 
-                        completed: 0, 
-                        pending: 0, 
-                        uncheck: 0 
-                    };
+                if (!partnerStats[partner]) partnerStats[partner] = 0;
+                partnerStats[partner]++;
+
+                if (!staffMap[staff]) {
+                    staffMap[staff] = { staff, leader, partner, total: 0, completed: 0, pending: 0, uncheck: 0 };
                 }
-                let stats = mapStaff[staffName];
-                stats.total++;
+                let st = staffMap[staff];
+                st.total++;
                 let status = getRecordStatus(v);
-                if (status === "HOAN_THANH") stats.completed++;
-                else if (status === "CHUA_XU_LY") stats.pending++;
-                else stats.uncheck++;
+                if (status === "HOAN_THANH") st.completed++;
+                else if (status === "CHUA_XU_LY") st.pending++;
+                else st.uncheck++;
             });
 
-            let container = document.getElementById('player-cards-container');
-            let staffArray = Object.values(mapStaff);
+            let leaderLabels = Object.keys(leaderStats);
+            let leaderCompletedData = leaderLabels.map(l => leaderStats[l].completed);
+            let leaderTotalData = leaderLabels.map(l => leaderStats[l].total);
+
+            if (leaderChartInstance) leaderChartInstance.destroy();
+            let ctxLeader = document.getElementById('leaderChart').getContext('2d');
+            leaderChartInstance = new Chart(ctxLeader, {
+                type: 'bar',
+                data: {
+                    labels: leaderLabels,
+                    datasets: [
+                        { label: 'Hoàn thành', data: leaderCompletedData, backgroundColor: '#10b981', borderRadius: 4 },
+                        { label: 'Tổng hồ sơ', data: leaderTotalData, backgroundColor: '#cbd5e1', borderRadius: 4 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+
+            let partnerLabels = Object.keys(partnerStats);
+            let partnerDataValues = partnerLabels.map(p => partnerStats[p]);
+
+            if (partnerChartInstance) partnerChartInstance.destroy();
+            let ctxPartner = document.getElementById('partnerChart').getContext('2d');
+            partnerChartInstance = new Chart(ctxPartner, {
+                type: 'doughnut',
+                data: {
+                    labels: partnerLabels,
+                    datasets: [{
+                        data: partnerDataValues,
+                        backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+
+            let staffContainer = document.getElementById('staff-cards-container');
+            let staffArray = Object.values(staffMap);
 
             if (staffArray.length === 0) {
-                container.innerHTML = `<div class="col-12 text-center text-muted py-4">Không tìm thấy dữ liệu phù hợp bộ lọc ngày.</div>`;
+                staffContainer.innerHTML = `<div class="col-12 text-center text-muted py-4">Không có dữ liệu nhân viên phù hợp.</div>`;
                 return;
             }
 
-            // Sắp xếp: Nhân viên có lượng tồn (chưa xử lý + chưa kiểm tra) nhiều nhất lên đầu
-            staffArray.sort((a, b) => {
-                let backlogA = a.pending + a.uncheck;
-                let backlogB = b.pending + b.uncheck;
-                if (backlogB !== backlogA) {
-                    return backlogB - backlogA;
-                }
-                return b.total - a.total;
-            });
+            staffArray.sort((a, b) => b.total - a.total);
 
-            container.innerHTML = staffArray.map(stats => {
-                let percent = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+            staffContainer.innerHTML = staffArray.map(st => {
+                let pct = st.total > 0 ? Math.round((st.completed / st.total) * 100) : 0;
+                let badgeColor = pct >= 80 ? 'bg-success' : (pct >= 50 ? 'bg-warning text-dark' : 'bg-danger');
                 return `
                     <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12">
-                        <div class="player-card" onclick="showStaffDetailModal('${stats.staff}')">
-                            <div class="leader-name text-truncate" title="${stats.staff}">
-                                <i class="fa-solid fa-user me-1 text-primary"></i>${stats.staff}
-                                <div class="small text-muted fw-normal text-truncate mt-0" style="font-size: 0.75rem;" title="${stats.leader}">Đội: ${stats.leader}</div>
+                        <div class="product-card" onclick="showStaffDetailModal('${st.staff}')">
+                            <span class="badge ${badgeColor} product-badge">${pct}% HT</span>
+                            <div class="staff-name text-truncate"><i class="fa-solid fa-user-tie me-1 text-primary"></i>${st.staff}</div>
+                            <div class="staff-meta text-truncate">Đội: ${st.leader} | Đối tác: ${st.partner}</div>
+                            <div class="d-flex justify-content-between small text-muted mb-1">
+                                <span>Khối lượng:</span>
+                                <span class="fw-bold text-dark">${st.total} HĐ</span>
                             </div>
-                            <div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
-                                <span class="text-muted">Tổng:</span>
-                                <span class="fw-bold">${stats.total}</span>
+                            <div class="progress" style="height: 6px; border-radius: 4px;">
+                                <div class="progress-bar bg-success" style="width: ${pct}%"></div>
                             </div>
-                            <div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
-                                <span class="text-success">Hoàn thành:</span>
-                                <span class="fw-bold text-success">${stats.completed}</span>
+                            <div class="custom-tooltip">
+                                <div class="fw-bold mb-1 border-bottom pb-1">${st.staff}</div>
+                                <div>Tổng số hồ sơ: <b>${st.total}</b></div>
+                                <div class="text-success">Đã hoàn thành: <b>${st.completed}</b></div>
+                                <div class="text-warning">Chưa xử lý: <b>${st.pending}</b></div>
+                                <div class="text-info">Chưa kiểm tra: <b>${st.uncheck}</b></div>
+                                <div class="mt-1 text-end fst-italic" style="font-size: 0.65rem;">Nhấp để xem danh sách chi tiết</div>
                             </div>
-                            <div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
-                                <span class="text-warning">Chưa xử lý:</span>
-                                <span class="fw-bold text-warning">${stats.pending}</span>
-                            </div>
-                            <div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
-                                <span class="text-primary">Chưa kiểm tra:</span>
-                                <span class="fw-bold text-primary">${stats.uncheck}</span>
-                            </div>
-                            <div class="progress mt-2" style="height: 6px;">
-                                <div class="progress-bar bg-success" style="width: ${percent}%"></div>
-                            </div>
-                            <div class="text-end mt-1"><small class="text-muted" style="font-size: 0.65rem;">HT: ${percent}% (Xem chi tiết)</small></div>
                         </div>
                     </div>
                 `;
@@ -737,21 +807,11 @@
         }
 
         function showStaffDetailModal(staffName) {
-            document.getElementById('modal-leader-title').innerHTML = `<i class="fa-solid fa-user me-2"></i>Chi tiết công việc nhân viên: ${staffName}`;
-            let fThang = document.getElementById('daily-filter-thang').value;
-            let fNgay = document.getElementById('daily-filter-ngay').value;
-
-            let rows = globalData.rows.filter(r => {
-                let v = r.values;
-                if (String(v[COL.NHANVIEN]).trim() !== staffName) return false;
-                let dt = getNgayThang(v[COL.NGAY_PTC]);
-                if (fThang && dt.thang !== fThang) return false;
-                if (fNgay && dt.ngay !== fNgay) return false;
-                return true;
-            });
+            document.getElementById('modal-staff-title').innerHTML = `<i class="fa-solid fa-user-gear me-2"></i>Chi tiết công việc: ${staffName}`;
+            let rows = getFilteredRows().filter(r => String(r.values[COL.NHANVIEN]).trim() === staffName);
 
             let bodyHtml = `
-                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
                     <table class="table table-sm table-striped align-middle small">
                         <thead>
                             <tr>
@@ -787,117 +847,17 @@
                     `;
                 });
             }
-
             bodyHtml += `</tbody></table></div>`;
-            document.getElementById('modal-leader-body').innerHTML = bodyHtml;
-            new bootstrap.Modal(document.getElementById('leaderDetailModal')).show();
+            document.getElementById('modal-staff-body').innerHTML = bodyHtml;
+            new bootstrap.Modal(document.getElementById('staffDetailModal')).show();
         }
 
-        // --- TAB 3: DASHBOARD BÁO CÁO ĐỐI TÁC & ĐỘI TRƯỞNG ---
-        function initReportFilters() {
-            let setThang = new Set(), setDoitac = new Set();
-            globalData.rows.forEach(r => {
-                let dt = getNgayThang(r.values[COL.NGAY_PTC]);
-                if (dt.thang) setThang.add(dt.thang);
-                if (r.values[COL.DOITAC]) setDoitac.add(String(r.values[COL.DOITAC]).trim());
-            });
-            fillSelect('report-filter-thang', Array.from(setThang).sort(), document.getElementById('report-filter-thang').value);
-            fillSelect('report-filter-doitac', Array.from(setDoitac).sort(), document.getElementById('report-filter-doitac').value);
+        let cached = localStorage.getItem('iqc_sheet_data');
+        if (cached) {
+            globalData = JSON.parse(cached);
+            updateGlobalFilters();
+            filterData();
         }
-
-        function resetReportFilters() {
-            document.getElementById('report-filter-thang').value = "";
-            document.getElementById('report-filter-doitac').value = "";
-            renderReportDashboard();
-        }
-
-        function renderReportDashboard() {
-            let fThang = document.getElementById('report-filter-thang').value;
-            let fDoitac = document.getElementById('report-filter-doitac').value;
-
-            let partnerMap = {};
-            globalData.rows.forEach(r => {
-                let v = r.values;
-                let dt = getNgayThang(v[COL.NGAY_PTC]);
-                if (fThang && dt.thang !== fThang) return;
-                let doitacName = v[COL.DOITAC] ? String(v[COL.DOITAC]).trim() : "Khác";
-                if (fDoitac && doitacName !== fDoitac) return;
-
-                let doitruongName = v[COL.DOITRUONG] ? String(v[COL.DOITRUONG]).trim() : "Không xác định";
-
-                if (!partnerMap[doitacName]) partnerMap[doitacName] = {};
-                if (!partnerMap[doitacName][doitruongName]) {
-                    partnerMap[doitacName][doitruongName] = { total: 0, completed: 0, pending: 0, uncheck: 0 };
-                }
-
-                let stats = partnerMap[doitacName][doitruongName];
-                stats.total++;
-                let status = getRecordStatus(v);
-                if (status === "HOAN_THANH") stats.completed++;
-                else if (status === "CHUA_XU_LY") stats.pending++;
-                else stats.uncheck++;
-            });
-
-            let container = document.getElementById('report-container');
-            let partners = Object.keys(partnerMap).sort();
-            if (partners.length === 0) {
-                container.innerHTML = `<div class="alert alert-warning text-center">Không tìm thấy dữ liệu báo cáo đối tác phù hợp.</div>`;
-                return;
-            }
-
-            container.innerHTML = partners.map(partner => {
-                let leaders = partnerMap[partner];
-                let leaderRows = Object.keys(leaders).sort().map(leader => {
-                    let s = leaders[leader];
-                    let pct = s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0;
-                    return `
-                        <tr>
-                            <td class="fw-bold">${leader}</td>
-                            <td class="text-center">${s.total}</td>
-                            <td class="text-center text-success fw-bold">${s.completed}</td>
-                            <td class="text-center text-warning fw-bold">${s.pending}</td>
-                            <td class="text-center text-primary fw-bold">${s.uncheck}</td>
-                            <td style="width: 200px;">
-                                <div class="d-flex align-items-center">
-                                    <div class="progress flex-grow-1 me-2" style="height: 6px;">
-                                        <div class="progress-bar bg-success" style="width: ${pct}%"></div>
-                                    </div>
-                                    <small class="text-muted">${pct}%</small>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
-
-                return `
-                    <div class="partner-section">
-                        <div class="partner-header">
-                            <span><i class="fa-solid fa-handshake me-2 text-primary"></i>Đối tác: ${partner}</span>
-                            <span class="badge bg-secondary">Số đội trưởng: ${Object.keys(leaders).length}</span>
-                        </div>
-                        <div class="table-responsive p-0">
-                            <table class="table table-bordered table-hover mb-0 small align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Đội trưởng</th>
-                                        <th class="text-center">Tổng số HĐ</th>
-                                        <th class="text-center">Hoàn thành</th>
-                                        <th class="text-center">Chưa xử lý</th>
-                                        <th class="text-center">Chưa kiểm tra</th>
-                                        <th>Tỷ lệ hoàn thành</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${leaderRows}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // Khởi chạy tải dữ liệu
         fetchSheetData();
     </script>
 </body>
