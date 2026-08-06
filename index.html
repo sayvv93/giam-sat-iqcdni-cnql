@@ -13,34 +13,29 @@
         .tab-content-section { display: none; }
         .tab-content-section.active { display: block; }
         
+        /* Thu nhỏ khung card nhân viên để hiển thị nhiều hơn */
         .player-card { 
             background: #fff; 
-            border: 2px solid #e9ecef; 
-            border-radius: 10px; 
-            padding: 15px; 
-            margin-bottom: 15px; 
+            border: 1px solid #dee2e6; 
+            border-radius: 8px; 
+            padding: 10px 12px; 
+            margin-bottom: 12px; 
             transition: all 0.2s ease-in-out; 
             cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
         .player-card:hover { 
-            box-shadow: 0 6px 12px rgba(13, 110, 253, 0.15); 
+            box-shadow: 0 4px 8px rgba(13, 110, 253, 0.15); 
             border-color: #0d6efd; 
-            transform: translateY(-3px);
+            transform: translateY(-2px);
         }
         .player-card .leader-name {
-            font-size: 1rem;
+            font-size: 0.9rem;
             font-weight: bold;
             color: #212529;
-            border-bottom: 2px solid #f8f9fa;
-            padding-bottom: 8px;
-            margin-bottom: 10px;
-        }
-        .stat-badge {
-            font-size: 0.75rem;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-weight: 600;
+            border-bottom: 1px solid #f8f9fa;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
         }
 
         .partner-section { background: #fff; border-radius: 8px; border: 1px solid #dee2e6; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); overflow: hidden; }
@@ -62,7 +57,6 @@
 
         <!-- TAB 1: DASHBOARD TỔNG -->
         <div id="section-dashboard" class="tab-content-section active">
-            <!-- Thẻ thống kê tổng hợp (4 nội dung) -->
             <div class="row text-center mb-3">
                 <div class="col-md-3">
                     <div class="card-stat border-primary">
@@ -90,7 +84,7 @@
                 </div>
             </div>
 
-            <!-- Bộ lọc phân cấp từ To đến Nhỏ -->
+            <!-- Bộ lọc phân cấp -->
             <div class="card mb-4 shadow-sm">
                 <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
                     <span class="fw-bold text-secondary"><i class="fa-solid fa-filter me-2"></i>Bộ lọc phân cấp dữ liệu</span>
@@ -170,7 +164,7 @@
             </div>
         </div>
 
-        <!-- TAB 2: DASHBOARD NGÀY -->
+        <!-- TAB 2: DASHBOARD NGÀY (THỐNG KÊ THEO NHÂN VIÊN) -->
         <div id="section-daily" class="tab-content-section">
             <div class="card shadow-sm mb-4">
                 <div class="card-body">
@@ -219,12 +213,12 @@
         </div>
     </div>
 
-    <!-- Modal Hiển thị Hiệu quả Công việc của Đội Trưởng -->
+    <!-- Modal Chi tiết -->
     <div class="modal fade" id="leaderDetailModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="modal-leader-title"><i class="fa-solid fa-user-tie me-2"></i>Hiệu quả công việc đội trưởng</h5>
+                    <h5 class="modal-title" id="modal-leader-title"><i class="fa-solid fa-user-tie me-2"></i>Hiệu quả công việc</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" id="modal-leader-body"></div>
@@ -232,6 +226,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const WEB_APP_URL = "https://iqc-cache-worker.sayvv93.workers.dev/";
         
@@ -269,80 +264,47 @@
             }
         }
 
-        // --- HÀM TẢI DỮ LIỆU TÍCH HỢP LOCALSTORAGE VÀ RETRY TỰ ĐỘNG ---
-        function fetchSheetData() {
-            let retries = 3;
-            let attempt = 0;
-
-            function tryFetch() {
-                attempt++;
-                var callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+        async function fetchSheetData() {
+            document.getElementById('alert-container').innerHTML = `<div class="alert alert-info py-2">⏳ Đang tải dữ liệu mới từ hệ thống...</div>`;
+            
+            try {
+                let response = await fetch(WEB_APP_URL + "?action=getData");
+                if (!response.ok) throw new Error("Lỗi kết nối HTTP: " + response.status);
                 
-                if (!globalData.rows.length && attempt === 1) {
-                    document.getElementById('alert-container').innerHTML = `<div class="alert alert-info py-2">⏳ Đang tải dữ liệu mới từ Google Sheets...</div>`;
-                }
-
-                var script = document.createElement('script');
+                let data = await response.json();
                 
-                let timeoutId = setTimeout(() => {
-                    cleanup();
-                    handleRetry();
-                }, 12000); // Timeout sau 12 giây nếu mạng treo
-
-                function cleanup() {
-                    clearTimeout(timeoutId);
-                    if (window[callbackName]) delete window[callbackName];
-                    if (script && script.parentNode) script.parentNode.removeChild(script);
+                if (data && data.rows) {
+                    globalData = data;
+                    try {
+                        localStorage.setItem('iqc_sheet_data', JSON.stringify(data));
+                        localStorage.setItem('iqc_sheet_time', Date.now());
+                    } catch (e) {
+                        console.warn("Không thể lưu LocalStorage", e);
+                    }
+                    
+                    document.getElementById('alert-container').innerHTML = `<div class="alert alert-success py-1 small mb-2">✅ Đã đồng bộ dữ liệu mới nhất thành công lúc ${new Date().toLocaleTimeString()}</div>`;
+                    setTimeout(() => { document.getElementById('alert-container').innerHTML = ''; }, 3000);
+                    
+                    updateDependentFilters();
+                    filterData();
+                } else {
+                    throw new Error("Cấu trúc dữ liệu trả về không hợp lệ");
                 }
-
-                window[callbackName] = function(data) {
-                    cleanup();
-                    if (data && data.rows) {
-                        globalData = data;
-                        try {
-                            localStorage.setItem('iqc_sheet_data', JSON.stringify(data));
-                            localStorage.setItem('iqc_sheet_time', Date.now());
-                        } catch (e) {
-                            console.warn("Không thể lưu LocalStorage", e);
-                        }
-                        document.getElementById('alert-container').innerHTML = `<div class="alert alert-success py-1 small mb-2">✅ Đã đồng bộ dữ liệu mới nhất thành công lúc ${new Date().toLocaleTimeString()}</div>`;
-                        setTimeout(() => { document.getElementById('alert-container').innerHTML = ''; }, 3000);
-                        
+            } catch (error) {
+                console.warn("Lỗi tải dữ liệu qua fetch, đang thử dùng dữ liệu cache...", error);
+                
+                let cached = localStorage.getItem('iqc_sheet_data');
+                if (cached) {
+                    try {
+                        globalData = JSON.parse(cached);
                         updateDependentFilters();
                         filterData();
-                    } else {
-                        handleRetry();
-                    }
-                };
-
-                script.src = WEB_APP_URL + "?action=getData&callback=" + callbackName;
-                script.onerror = function() {
-                    cleanup();
-                    handleRetry();
-                };
-                document.body.appendChild(script);
-            }
-
-            function handleRetry() {
-                if (attempt < retries) {
-                    console.warn(`Lần thử kết nối ${attempt} thất bại. Đang thử lại lần ${attempt + 1}...`);
-                    setTimeout(tryFetch, 2000);
-                } else {
-                    let cached = localStorage.getItem('iqc_sheet_data');
-                    if (cached) {
-                        try {
-                            globalData = JSON.parse(cached);
-                            updateDependentFilters();
-                            filterData();
-                            document.getElementById('alert-container').innerHTML = `<div class="alert alert-warning py-2">⚠️ Mạng chậm hoặc lỗi kết nối Google Sheets. Đang hiển thị dữ liệu lưu tạm trước đó.</div>`;
-                            return;
-                        } catch(e) {}
-                    }
-                    showError("Không thể kết nối đến Google Sheets API sau nhiều lần thử. Hãy kiểm tra lại kết nối mạng hoặc URL triển khai.");
+                        document.getElementById('alert-container').innerHTML = `<div class="alert alert-warning py-2">⚠️ Không thể kết nối mới. Đang hiển thị dữ liệu lưu tạm trước đó.</div>`;
+                        return;
+                    } catch(e) {}
                 }
+                showError("Không thể kết nối đến Google Sheets API. Hãy kiểm tra lại kết nối mạng hoặc URL triển khai.");
             }
-
-            tryFetch();
         }
 
         function showError(msg) {
@@ -470,16 +432,10 @@
             let check = vals[COL.CHECK] ? String(vals[COL.CHECK]).trim() : "";
             let xuLy = vals[COL.HUONG_XY] ? String(vals[COL.HUONG_XY]).trim() : "";
 
-            if (check === "" || check.toLowerCase().includes("chưa kiểm tra")) {
-                return "CHUA_KIEM_TRA";
-            }
-            if (check.toLowerCase().includes("đã đạt chuẩn 6 hình")) {
-                return "HOAN_THANH";
-            }
+            if (check === "" || check.toLowerCase().includes("chưa kiểm tra")) return "CHUA_KIEM_TRA";
+            if (check.toLowerCase().includes("đã đạt chuẩn 6 hình")) return "HOAN_THANH";
             if (check.toLowerCase().includes("chưa đạt chuẩn")) {
-                if (xuLy.toLowerCase().includes("đã xử lý lại")) {
-                    return "HOAN_THANH";
-                }
+                if (xuLy.toLowerCase().includes("đã xử lý lại")) return "HOAN_THANH";
                 return "CHUA_XU_LY";
             }
             return "CHUA_KIEM_TRA";
@@ -487,14 +443,12 @@
 
         function updateSummary(allRows) {
             let chuaKiemTra = 0, chuaXuLy = 0, hoanthanh = 0;
-
             allRows.forEach(r => {
                 let status = getRecordStatus(r.values);
                 if (status === "HOAN_THANH") hoanthanh++;
                 else if (status === "CHUA_KIEM_TRA") chuaKiemTra++;
                 else if (status === "CHUA_XU_LY") chuaXuLy++;
             });
-
             document.getElementById('sum-chuakiemtra').innerText = chuaKiemTra;
             document.getElementById('sum-chuaxuly').innerText = chuaXuLy;
             document.getElementById('sum-hoanthanh').innerText = hoanthanh;
@@ -513,7 +467,6 @@
                 btnBulk.disabled = true;
                 selectAllCheckbox.disabled = true;
                 selectAllCheckbox.checked = false;
-                
                 document.getElementById('table-body').innerHTML = `<tr><td colspan="11" class="text-center text-danger py-4 fw-bold">⚠️ Vui lòng chọn cụ thể ít nhất một <strong>Đội trưởng</strong> hoặc <strong>Nhân viên</strong> ở bộ lọc phía trên để kích hoạt tính năng chọn và gửi nhiều kết quả!</td></tr>`;
                 updateSummary(globalData.rows);
                 return;
@@ -530,25 +483,19 @@
             let filtered = globalData.rows.filter(r => {
                 let v = r.values;
                 let dt = getNgayThang(v[COL.NGAY_PTC]);
-
                 if (fThang && dt.thang !== fThang) return false;
                 if (fVung && String(v[COL.VUNG]).trim() !== fVung) return false;
                 if (fDoitac && String(v[COL.DOITAC]).trim() !== fDoitac) return false;
                 if (fDoitruong && String(v[COL.DOITRUONG]).trim() !== fDoitruong) return false;
                 if (fBlock && String(v[COL.BLOCK]).trim() !== fBlock) return false;
                 if (fNhanvien && String(v[COL.NHANVIEN]).trim() !== fNhanvien) return false;
-
-                let status = getRecordStatus(v);
-                if (status === "HOAN_THANH") return false;
-
+                if (getRecordStatus(v) === "HOAN_THANH") return false;
                 return true;
             });
 
             updateSummary(globalData.rows);
-
             let limit = document.getElementById('select-limit').value;
             let displayRows = limit === 'all' ? filtered : filtered.slice(0, parseInt(limit));
-
             renderTable(displayRows);
         }
 
@@ -563,9 +510,7 @@
                 let v = r.values;
                 let status = getRecordStatus(v);
                 let displayNgayPTC = formatNgayPTC(v[COL.NGAY_PTC]);
-
-                let checkInputHtml = '';
-                let xuLyInputHtml = '';
+                let checkInputHtml = '', xuLyInputHtml = '';
 
                 if (status === "CHUA_KIEM_TRA") {
                     checkInputHtml = `
@@ -578,7 +523,6 @@
                     xuLyInputHtml = `<span class="text-muted small">-</span>`;
                 } else if (status === "CHUA_XU_LY") {
                     checkInputHtml = `<span class="badge bg-warning text-dark">Chưa đạt chuẩn</span>`;
-                    
                     let currentXuLy = v[COL.HUONG_XY] || "";
                     xuLyInputHtml = `
                         <select class="form-select form-select-sm xuly-select" data-row="${r.rowIndex}">
@@ -598,134 +542,104 @@
                         <td>${v[COL.DOITRUONG] || ''}</td>
                         <td>${v[COL.BLOCK] || ''}</td>
                         <td>${v[COL.NHANVIEN] || ''}</td>
-                        <td class="fw-bold text-primary">${v[COL.HOPDONG] || ''}</td>
+                        <td><span class="fw-bold text-primary">${v[COL.HOPDONG] || ''}</span></td>
                         <td>${displayNgayPTC}</td>
-                        <td class="td-check" data-row="${r.rowIndex}">${checkInputHtml}</td>
-                        <td class="td-xuly" data-row="${r.rowIndex}">${xuLyInputHtml}</td>
+                        <td>${checkInputHtml}</td>
+                        <td>${xuLyInputHtml}</td>
                     </tr>
                 `;
             }).join('');
-        }
-
-        function onCheckResultChange(selectElem) {
-            let rowIndex = selectElem.getAttribute('data-row');
-            let val = selectElem.value;
-            let tr = selectElem.closest('tr');
-            let xulyTd = tr.querySelector('.td-xuly');
-
-            if (val === "Chưa đạt chuẩn") {
-                xulyTd.innerHTML = `
-                    <select class="form-select form-select-sm xuly-select" data-row="${rowIndex}">
-                        <option value="">-- Chọn hướng xử lý --</option>
-                        <option value="Đã chuyển KTV yêu cầu update lại">Đã chuyển KTV yêu cầu update lại</option>
-                        <option value="Đã xử lý lại">Đã xử lý lại</option>
-                    </select>
-                `;
-            } else {
-                xulyTd.innerHTML = `<span class="text-muted small">-</span>`;
-            }
         }
 
         function toggleSelectAll(master) {
             document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = master.checked);
         }
 
-        function bulkSubmit() {
-            let checkboxes = document.querySelectorAll('.row-checkbox:checked');
-            
-            if (checkboxes.length === 0) {
-                alert("Vui lòng chọn ít nhất một dòng để gửi dữ liệu!");
+        function onCheckResultChange(selectElem) {
+            let rowIdx = selectElem.getAttribute('data-row');
+            let tr = selectElem.closest('tr');
+            let tdXuLy = tr.cells[10];
+            if (selectElem.value === 'Chưa đạt chuẩn') {
+                tdXuLy.innerHTML = `
+                    <select class="form-select form-select-sm xuly-select" data-row="${rowIdx}">
+                        <option value="">-- Chọn hướng xử lý --</option>
+                        <option value="Đã chuyển KTV yêu cầu update lại">Đã chuyển KTV yêu cầu update lại</option>
+                        <option value="Đã xử lý lại">Đã xử lý lại</option>
+                    </select>
+                `;
+            } else {
+                tdXuLy.innerHTML = `<span class="text-muted small">-</span>`;
+            }
+        }
+
+        async function bulkSubmit() {
+            let checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                alert("Vui lòng tích chọn ít nhất một dòng để gửi!");
                 return;
             }
 
             let updates = [];
-            checkboxes.forEach(cb => {
-                let rowIndex = cb.value;
+            for (let cb of checkedBoxes) {
+                let rowIdx = parseInt(cb.value);
                 let tr = cb.closest('tr');
-                
-                let checkVal = "";
-                let xuLyVal = "";
+                let checkSel = tr.querySelector('.check-select');
+                let xuLySel = tr.querySelector('.xuly-select');
 
-                let checkSelect = tr.querySelector('.check-select');
-                if (checkSelect) {
-                    checkVal = checkSelect.value;
+                let valCheck = checkSel ? checkSel.value : "Chưa đạt chuẩn";
+                let valXuLy = xuLySel ? xuLySel.value : "";
+
+                if (!checkSel && !xuLySel) continue;
+                if (checkSel && !valCheck) {
+                    alert(`Vui lòng chọn kết quả check cho dòng hợp đồng ở STT ${tr.cells[1].innerText}`);
+                    return;
+                }
+                if (valCheck === 'Chưa đạt chuẩn' && !valXuLy) {
+                    alert(`Vui lòng chọn hướng xử lý cho dòng hợp đồng ở STT ${tr.cells[1].innerText}`);
+                    return;
+                }
+
+                updates.push({ rowIndex: rowIdx, check: valCheck, xuLy: valXuLy });
+            }
+
+            if (updates.length === 0) return;
+
+            if (!confirm(`Bạn có chắc chắn muốn gửi cập nhật cho ${updates.length} dòng đã chọn?`)) return;
+
+            document.getElementById('alert-container').innerHTML = `<div class="alert alert-info py-2">⏳ Đang gửi dữ liệu lên hệ thống...</div>`;
+
+            try {
+                let response = await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: "updateBatch", updates: updates })
+                });
+                let result = await response.json();
+                if (result.status === 'success') {
+                    alert("Cập nhật thành công!");
+                    fetchSheetData();
                 } else {
-                    let badge = tr.querySelector('.badge');
-                    if (badge) checkVal = "Chưa đạt chuẩn";
+                    throw new Error(result.message || "Lỗi cập nhật");
                 }
-
-                let xulySelect = tr.querySelector('.xuly-select');
-                if (xulySelect) {
-                    xuLyVal = xulySelect.value;
-                }
-
-                updates.push({ rowIndex, checkVal, xuLyVal });
-            });
-
-            let activeDoiTruong = document.getElementById('filter-doitruong').value || "Chung";
-            let activeNhanVien = document.getElementById('filter-nhanvien').value || "Tất cả NV";
-            
-            let now = new Date();
-            let timeStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-
-            let count = 0;
-            let total = updates.length;
-
-            document.getElementById('alert-container').innerHTML = `<div class="alert alert-info">⏳ Đang cập nhật ${total} dòng lên Google Sheets và ghi log cột J...</div>`;
-
-            updates.forEach(item => {
-                let actionDesc = item.checkVal === "Đã đạt chuẩn 6 hình" ? "Check: Đã đạt chuẩn 6 hình" : `Check: ${item.checkVal}${item.xuLyVal ? ' | Xử lý: ' + item.xuLyVal : ''}`;
-                let logContent = `[${timeStr}] ĐT: ${activeDoiTruong} | NV: ${activeNhanVien} | ${actionDesc}`;
-
-                var callbackName = 'jsonp_update_' + Math.round(100000 * Math.random()) + '_' + item.rowIndex;
-                window[callbackName] = function(res) {
-                    delete window[callbackName];
-                    if (script.parentNode) script.parentNode.removeChild(script);
-                    
-                    let rowObj = globalData.rows.find(r => r.rowIndex == item.rowIndex);
-                    if (rowObj) {
-                        if (item.checkVal) rowObj.values[COL.CHECK] = item.checkVal;
-                        if (item.xuLyVal) rowObj.values[COL.HUONG_XY] = item.xuLyVal;
-                        rowObj.values[COL.LOG] = logContent;
-                    }
-
-                    count++;
-                    if (count === total) {
-                        try {
-                            localStorage.setItem('iqc_sheet_data', JSON.stringify(globalData));
-                        } catch(e) {}
-                        
-                        document.getElementById('alert-container').innerHTML = `<div class="alert alert-success">✅ Cập nhật thành công ${total} dòng, đã ghi log vào cột J!</div>`;
-                        setTimeout(() => { document.getElementById('alert-container').innerHTML = ''; }, 3000);
-                        filterData(); 
-                    }
-                };
-
-                var script = document.createElement('script');
-                script.src = `${WEB_APP_URL}?action=updateData&rowIndex=${item.rowIndex}&checkVal=${encodeURIComponent(item.checkVal)}&xuLyVal=${encodeURIComponent(item.xuLyVal)}&logVal=${encodeURIComponent(logContent)}&callback=${callbackName}`;
-                script.onerror = function() {
-                    count++;
-                    if (count === total) {
-                        document.getElementById('alert-container').innerHTML = `<div class="alert alert-danger">❌ Có lỗi xảy ra khi cập nhật lên Google Sheets.</div>`;
-                    }
-                };
-                document.body.appendChild(script);
-            });
+            } catch (err) {
+                alert("Lỗi khi gửi dữ liệu: " + err.message);
+                document.getElementById('alert-container').innerHTML = '';
+            }
         }
 
+        // --- TAB 2: DASHBOARD NGÀY (THỐNG KÊ THEO NHÂN VIÊN, SẮP XẾP TỒN CAO LÊN ĐẦU) ---
         function initDailyFilters() {
-            let setThang = new Set(), setNgay = new Set(), setDoiTruong = new Set();
+            let setThang = new Set(), setNgay = new Set(), setDoitruong = new Set();
             globalData.rows.forEach(r => {
                 let dt = getNgayThang(r.values[COL.NGAY_PTC]);
                 if (dt.thang) setThang.add(dt.thang);
                 if (dt.ngay) setNgay.add(dt.ngay);
-                let dtTruong = r.values[COL.DOITRUONG] ? String(r.values[COL.DOITRUONG]).trim() : "";
-                if (dtTruong) setDoiTruong.add(dtTruong);
+                if (r.values[COL.DOITRUONG]) setDoitruong.add(String(r.values[COL.DOITRUONG]).trim());
             });
 
             fillSelect('daily-filter-thang', Array.from(setThang).sort(), document.getElementById('daily-filter-thang').value);
             fillSelect('daily-filter-ngay', Array.from(setNgay).sort(), document.getElementById('daily-filter-ngay').value);
-            fillSelect('daily-filter-doitruong', Array.from(setDoiTruong).sort(), document.getElementById('daily-filter-doitruong').value);
+            fillSelect('daily-filter-doitruong', Array.from(setDoitruong).sort(), document.getElementById('daily-filter-doitruong').value);
         }
 
         function resetDailyFilters() {
@@ -738,64 +652,155 @@
         function renderDailyDashboard() {
             let fThang = document.getElementById('daily-filter-thang').value;
             let fNgay = document.getElementById('daily-filter-ngay').value;
-            let fDoiTruong = document.getElementById('daily-filter-doitruong').value;
-            let container = document.getElementById('player-cards-container');
-            let employeeMap = {};
+            let fDoitruong = document.getElementById('daily-filter-doitruong').value;
 
+            let mapStaff = {};
             globalData.rows.forEach(r => {
                 let v = r.values;
                 let dt = getNgayThang(v[COL.NGAY_PTC]);
                 if (fThang && dt.thang !== fThang) return;
                 if (fNgay && dt.ngay !== fNgay) return;
-                let doiTruongVal = v[COL.DOITRUONG] ? String(v[COL.DOITRUONG]).trim() : "";
-                if (fDoiTruong && doiTruongVal !== fDoiTruong) return;
+                let dtName = v[COL.DOITRUONG] ? String(v[COL.DOITRUONG]).trim() : "Chưa phân nhóm";
+                if (fDoitruong && dtName !== fDoitruong) return;
 
-                let status = getRecordStatus(v);
-                if (status === "HOAN_THANH") return;
+                let staffName = v[COL.NHANVIEN] ? String(v[COL.NHANVIEN]).trim() : "Chưa xác định";
 
-                let nv = v[COL.NHANVIEN] || "Chưa phân công";
-                if (!employeeMap[nv]) {
-                    employeeMap[nv] = { total: 0, doiTruong: doiTruongVal, vung: v[COL.VUNG] };
+                if (!mapStaff[staffName]) {
+                    mapStaff[staffName] = { 
+                        staff: staffName, 
+                        leader: dtName, 
+                        total: 0, 
+                        completed: 0, 
+                        pending: 0, 
+                        uncheck: 0 
+                    };
                 }
-                employeeMap[nv].total++;
+                let stats = mapStaff[staffName];
+                stats.total++;
+                let status = getRecordStatus(v);
+                if (status === "HOAN_THANH") stats.completed++;
+                else if (status === "CHUA_XU_LY") stats.pending++;
+                else stats.uncheck++;
             });
 
-            let sortedEmployees = Object.keys(employeeMap).sort((a, b) => employeeMap[b].total - employeeMap[a].total);
+            let container = document.getElementById('player-cards-container');
+            let staffArray = Object.values(mapStaff);
 
-            if (sortedEmployees.length === 0) {
-                container.innerHTML = `<div class="col-12 text-center text-muted py-5">Không có dữ liệu tồn đọng phù hợp với bộ lọc ngày và đội trưởng.</div>`;
+            if (staffArray.length === 0) {
+                container.innerHTML = `<div class="col-12 text-center text-muted py-4">Không tìm thấy dữ liệu phù hợp bộ lọc ngày.</div>`;
                 return;
             }
 
-            container.innerHTML = sortedEmployees.map(nv => {
-                let data = employeeMap[nv];
+            // Sắp xếp: Nhân viên có lượng tồn (chưa xử lý + chưa kiểm tra) nhiều nhất lên đầu
+            staffArray.sort((a, b) => {
+                let backlogA = a.pending + a.uncheck;
+                let backlogB = b.pending + b.uncheck;
+                if (backlogB !== backlogA) {
+                    return backlogB - backlogA;
+                }
+                return b.total - a.total;
+            });
+
+            container.innerHTML = staffArray.map(stats => {
+                let percent = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
                 return `
-                    <div class="col-md-4 col-lg-3">
-                        <div class="player-card">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="fw-bold text-dark text-truncate" style="font-size: 0.9rem;" title="${nv}"><i class="fa-solid fa-user-tie me-1 text-primary"></i>${nv}</span>
-                                <span class="badge bg-danger rounded-pill" style="font-size: 0.75rem;">${data.total} tồn</span>
+                    <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12">
+                        <div class="player-card" onclick="showStaffDetailModal('${stats.staff}')">
+                            <div class="leader-name text-truncate" title="${stats.staff}">
+                                <i class="fa-solid fa-user me-1 text-primary"></i>${stats.staff}
+                                <div class="small text-muted fw-normal text-truncate mt-0" style="font-size: 0.75rem;" title="${stats.leader}">Đội: ${stats.leader}</div>
                             </div>
-                            <div class="text-muted" style="font-size: 0.75rem;">
-                                <div>Vùng: ${data.vung || '-'}</div>
-                                <div class="text-truncate">Đội trưởng: ${data.doiTruong || '-'}</div>
+                            <div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
+                                <span class="text-muted">Tổng:</span>
+                                <span class="fw-bold">${stats.total}</span>
                             </div>
+                            <div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
+                                <span class="text-success">Hoàn thành:</span>
+                                <span class="fw-bold text-success">${stats.completed}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
+                                <span class="text-warning">Chưa xử lý:</span>
+                                <span class="fw-bold text-warning">${stats.pending}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
+                                <span class="text-primary">Chưa kiểm tra:</span>
+                                <span class="fw-bold text-primary">${stats.uncheck}</span>
+                            </div>
+                            <div class="progress mt-2" style="height: 6px;">
+                                <div class="progress-bar bg-success" style="width: ${percent}%"></div>
+                            </div>
+                            <div class="text-end mt-1"><small class="text-muted" style="font-size: 0.65rem;">HT: ${percent}% (Xem chi tiết)</small></div>
                         </div>
                     </div>
                 `;
             }).join('');
         }
 
+        function showStaffDetailModal(staffName) {
+            document.getElementById('modal-leader-title').innerHTML = `<i class="fa-solid fa-user me-2"></i>Chi tiết công việc nhân viên: ${staffName}`;
+            let fThang = document.getElementById('daily-filter-thang').value;
+            let fNgay = document.getElementById('daily-filter-ngay').value;
+
+            let rows = globalData.rows.filter(r => {
+                let v = r.values;
+                if (String(v[COL.NHANVIEN]).trim() !== staffName) return false;
+                let dt = getNgayThang(v[COL.NGAY_PTC]);
+                if (fThang && dt.thang !== fThang) return false;
+                if (fNgay && dt.ngay !== fNgay) return false;
+                return true;
+            });
+
+            let bodyHtml = `
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-sm table-striped align-middle small">
+                        <thead>
+                            <tr>
+                                <th>STT</th>
+                                <th>Đội trưởng</th>
+                                <th>Đối tác</th>
+                                <th>Block</th>
+                                <th>Số HĐ</th>
+                                <th>Ngày PTC</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            if (rows.length === 0) {
+                bodyHtml += `<tr><td colspan="7" class="text-center text-muted">Không có dữ liệu chi tiết.</td></tr>`;
+            } else {
+                rows.forEach((r, idx) => {
+                    let v = r.values;
+                    let status = getRecordStatus(v);
+                    let badge = status === 'HOAN_THANH' ? '<span class="badge bg-success">Hoàn thành</span>' : (status === 'CHUA_XU_LY' ? '<span class="badge bg-warning text-dark">Chưa xử lý</span>' : '<span class="badge bg-primary">Chưa kiểm tra</span>');
+                    bodyHtml += `
+                        <tr>
+                            <td>${idx + 1}</td>
+                            <td>${v[COL.DOITRUONG] || ''}</td>
+                            <td>${v[COL.DOITAC] || ''}</td>
+                            <td>${v[COL.BLOCK] || ''}</td>
+                            <td class="fw-bold text-primary">${v[COL.HOPDONG] || ''}</td>
+                            <td>${formatNgayPTC(v[COL.NGAY_PTC])}</td>
+                            <td>${badge}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            bodyHtml += `</tbody></table></div>`;
+            document.getElementById('modal-leader-body').innerHTML = bodyHtml;
+            new bootstrap.Modal(document.getElementById('leaderDetailModal')).show();
+        }
+
+        // --- TAB 3: DASHBOARD BÁO CÁO ĐỐI TÁC & ĐỘI TRƯỞNG ---
         function initReportFilters() {
             let setThang = new Set(), setDoitac = new Set();
             globalData.rows.forEach(r => {
-                let v = r.values;
-                let dt = getNgayThang(v[COL.NGAY_PTC]);
+                let dt = getNgayThang(r.values[COL.NGAY_PTC]);
                 if (dt.thang) setThang.add(dt.thang);
-                let doitacVal = v[COL.DOITAC] ? String(v[COL.DOITAC]).trim() : "";
-                if (doitacVal) setDoitac.add(doitacVal);
+                if (r.values[COL.DOITAC]) setDoitac.add(String(r.values[COL.DOITAC]).trim());
             });
-
             fillSelect('report-filter-thang', Array.from(setThang).sort(), document.getElementById('report-filter-thang').value);
             fillSelect('report-filter-doitac', Array.from(setDoitac).sort(), document.getElementById('report-filter-doitac').value);
         }
@@ -806,204 +811,94 @@
             renderReportDashboard();
         }
 
-        let reportLeaderDataStore = {};
-
         function renderReportDashboard() {
             let fThang = document.getElementById('report-filter-thang').value;
             let fDoitac = document.getElementById('report-filter-doitac').value;
-            let container = document.getElementById('report-container');
 
-            reportLeaderDataStore = {}; 
-
+            let partnerMap = {};
             globalData.rows.forEach(r => {
                 let v = r.values;
                 let dt = getNgayThang(v[COL.NGAY_PTC]);
                 if (fThang && dt.thang !== fThang) return;
-                
-                let partner = v[COL.DOITAC] ? String(v[COL.DOITAC]).trim() : "Chưa xác định đối tác";
-                if (fDoitac && partner !== fDoitac) return;
+                let doitacName = v[COL.DOITAC] ? String(v[COL.DOITAC]).trim() : "Khác";
+                if (fDoitac && doitacName !== fDoitac) return;
 
-                let leader = v[COL.DOITRUONG] ? String(v[COL.DOITRUONG]).trim() : "Chưa xác định đội trưởng";
-                let employee = v[COL.NHANVIEN] ? String(v[COL.NHANVIEN]).trim() : "Chưa phân công";
+                let doitruongName = v[COL.DOITRUONG] ? String(v[COL.DOITRUONG]).trim() : "Không xác định";
+
+                if (!partnerMap[doitacName]) partnerMap[doitacName] = {};
+                if (!partnerMap[doitacName][doitruongName]) {
+                    partnerMap[doitacName][doitruongName] = { total: 0, completed: 0, pending: 0, uncheck: 0 };
+                }
+
+                let stats = partnerMap[doitacName][doitruongName];
+                stats.total++;
                 let status = getRecordStatus(v);
-
-                if (!reportLeaderDataStore[partner]) {
-                    reportLeaderDataStore[partner] = { 
-                        total: 0, chuaKiemTra: 0, chuaXuLy: 0, hoanThanh: 0, leaders: {} 
-                    };
-                }
-                
-                let pData = reportLeaderDataStore[partner];
-                pData.total++;
-                if (status === "CHUA_KIEM_TRA") pData.chuaKiemTra++;
-                else if (status === "CHUA_XU_LY") pData.chuaXuLy++;
-                else if (status === "HOAN_THANH") pData.hoanThanh++;
-
-                if (!pData.leaders[leader]) {
-                    pData.leaders[leader] = { 
-                        total: 0, chuaKiemTra: 0, chuaXuLy: 0, hoanThanh: 0, employees: {} 
-                    };
-                }
-
-                let lData = pData.leaders[leader];
-                lData.total++;
-                if (status === "CHUA_KIEM_TRA") lData.chuaKiemTra++;
-                else if (status === "CHUA_XU_LY") lData.chuaXuLy++;
-                else if (status === "HOAN_THANH") lData.hoanThanh++;
-
-                if (!lData.employees[employee]) {
-                    lData.employees[employee] = { total: 0, chuaKiemTra: 0, chuaXuLy: 0, hoanThanh: 0 };
-                }
-                let empData = lData.employees[employee];
-                empData.total++;
-                if (status === "CHUA_KIEM_TRA") empData.chuaKiemTra++;
-                else if (status === "CHUA_XU_LY") empData.chuaXuLy++;
-                else if (status === "HOAN_THANH") empData.hoanThanh++;
+                if (status === "HOAN_THANH") stats.completed++;
+                else if (status === "CHUA_XU_LY") stats.pending++;
+                else stats.uncheck++;
             });
 
-            let sortedPartners = Object.keys(reportLeaderDataStore).sort((a, b) => reportLeaderDataStore[b].total - reportLeaderDataStore[a].total);
-
-            if (sortedPartners.length === 0) {
-                container.innerHTML = `<div class="text-center text-muted py-5">Không có dữ liệu báo cáo phù hợp.</div>`;
+            let container = document.getElementById('report-container');
+            let partners = Object.keys(partnerMap).sort();
+            if (partners.length === 0) {
+                container.innerHTML = `<div class="alert alert-warning text-center">Không tìm thấy dữ liệu báo cáo đối tác phù hợp.</div>`;
                 return;
             }
 
-            let html = '';
-            sortedPartners.forEach(partner => {
-                let pData = reportLeaderDataStore[partner];
-                html += `
-                    <div class="partner-section mb-4">
-                        <div class="partner-header bg-light p-3 border rounded-top d-flex justify-content-between align-items-center">
-                            <span class="fw-bold text-primary fs-5"><i class="fa-solid fa-handshake me-2"></i>Đối tác: ${partner}</span>
-                            <div>
-                                <span class="badge bg-primary me-2">Tổng: ${pData.total}</span>
-                                <span class="badge bg-success">Hoàn thành: ${pData.hoanThanh}</span>
-                            </div>
-                        </div>
-                        <div class="p-3 bg-white border border-top-0 rounded-bottom">
-                            <div class="row">
-                `;
-
-                let sortedLeaders = Object.keys(pData.leaders).sort((a, b) => pData.leaders[b].total - pData.leaders[a].total);
-                sortedLeaders.forEach(leader => {
-                    let lData = pData.leaders[leader];
-                    let safeLeader = encodeURIComponent(leader);
-                    let safePartner = encodeURIComponent(partner);
-
-                    html += `
-                        <div class="col-md-4 col-lg-3">
-                            <div class="player-card" onclick="openLeaderDetail('${safePartner}', '${safeLeader}')">
-                                <div class="leader-name text-truncate" title="${leader}">
-                                    <i class="fa-solid fa-user-tie me-1 text-success"></i>${leader}
+            container.innerHTML = partners.map(partner => {
+                let leaders = partnerMap[partner];
+                let leaderRows = Object.keys(leaders).sort().map(leader => {
+                    let s = leaders[leader];
+                    let pct = s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0;
+                    return `
+                        <tr>
+                            <td class="fw-bold">${leader}</td>
+                            <td class="text-center">${s.total}</td>
+                            <td class="text-center text-success fw-bold">${s.completed}</td>
+                            <td class="text-center text-warning fw-bold">${s.pending}</td>
+                            <td class="text-center text-primary fw-bold">${s.uncheck}</td>
+                            <td style="width: 200px;">
+                                <div class="d-flex align-items-center">
+                                    <div class="progress flex-grow-1 me-2" style="height: 6px;">
+                                        <div class="progress-bar bg-success" style="width: ${pct}%"></div>
+                                    </div>
+                                    <small class="text-muted">${pct}%</small>
                                 </div>
-                                <div class="d-flex justify-content-between mb-1 small">
-                                    <span class="text-muted">CHƯA KIỂM TRA:</span>
-                                    <span class="stat-badge bg-primary-subtle text-primary">${lData.chuaKiemTra}</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-1 small">
-                                    <span class="text-muted">CHƯA XỬ LÝ:</span>
-                                    <span class="stat-badge bg-warning-subtle text-warning-emphasis">${lData.chuaXuLy}</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-1 small">
-                                    <span class="text-muted">ĐÃ HOÀN THÀNH:</span>
-                                    <span class="stat-badge bg-success-subtle text-success">${lData.hoanThanh}</span>
-                                </div>
-                                <div class="d-flex justify-content-between pt-1 border-top mt-2 fw-bold small">
-                                    <span class="text-secondary">TỔNG SỐ LƯỢNG:</span>
-                                    <span class="text-dark">${lData.total}</span>
-                                </div>
-                            </div>
-                        </div>
+                            </td>
+                        </tr>
                     `;
-                });
+                }).join('');
 
-                html += `
-                            </div>
+                return `
+                    <div class="partner-section">
+                        <div class="partner-header">
+                            <span><i class="fa-solid fa-handshake me-2 text-primary"></i>Đối tác: ${partner}</span>
+                            <span class="badge bg-secondary">Số đội trưởng: ${Object.keys(leaders).length}</span>
+                        </div>
+                        <div class="table-responsive p-0">
+                            <table class="table table-bordered table-hover mb-0 small align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Đội trưởng</th>
+                                        <th class="text-center">Tổng số HĐ</th>
+                                        <th class="text-center">Hoàn thành</th>
+                                        <th class="text-center">Chưa xử lý</th>
+                                        <th class="text-center">Chưa kiểm tra</th>
+                                        <th>Tỷ lệ hoàn thành</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${leaderRows}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 `;
-            });
-
-            container.innerHTML = html;
+            }).join('');
         }
 
-        function openLeaderDetail(encodedPartner, encodedLeader) {
-            let partner = decodeURIComponent(encodedPartner);
-            let leader = decodeURIComponent(encodedLeader);
-
-            let pData = reportLeaderDataStore[partner];
-            if (!pData || !pData.leaders[leader]) return;
-
-            let lData = pData.leaders[leader];
-            
-            document.getElementById('modal-leader-title').innerHTML = `<i class="fa-solid fa-user-tie me-2"></i>Đội trưởng: ${leader} <span class="badge bg-light text-dark ms-2">Đối tác: ${partner}</span>`;
-
-            let sortedEmployees = Object.keys(lData.employees).sort((a, b) => lData.employees[b].total - lData.employees[a].total);
-
-            let bodyHtml = `
-                <div class="row text-center mb-3 g-2">
-                    <div class="col-3"><div class="p-2 border rounded bg-light"><small class="text-muted d-block" style="font-size:11px;">CHƯA KIỂM TRA</small><strong>${lData.chuaKiemTra}</strong></div></div>
-                    <div class="col-3"><div class="p-2 border rounded bg-light"><small class="text-muted d-block" style="font-size:11px;">CHƯA XỬ LÝ</small><strong>${lData.chuaXuLy}</strong></div></div>
-                    <div class="col-3"><div class="p-2 border rounded bg-light"><small class="text-muted d-block" style="font-size:11px;">ĐÃ HOÀN THÀNH</small><strong>${lData.hoanThanh}</strong></div></div>
-                    <div class="col-3"><div class="p-2 border rounded bg-light"><small class="text-muted d-block" style="font-size:11px;">TỔNG SỐ LƯỢNG</small><strong>${lData.total}</strong></div></div>
-                </div>
-                <h6 class="fw-bold text-primary mb-2"><i class="fa-solid fa-users-gear me-2"></i>Hiệu quả chi tiết theo nhân sự:</h6>
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped align-middle small mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>STT</th>
-                                <th>Nhân viên</th>
-                                <th class="text-center">Chưa kiểm tra</th>
-                                <th class="text-center">Chưa xử lý</th>
-                                <th class="text-center">Đã hoàn thành</th>
-                                <th class="text-center">Tổng số lượng</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-
-            sortedEmployees.forEach((emp, idx) => {
-                let empData = lData.employees[emp];
-                bodyHtml += `
-                    <tr>
-                        <td>${idx + 1}</td>
-                        <td class="fw-bold text-dark"><i class="fa-solid fa-user me-1 text-muted"></i>${emp}</td>
-                        <td class="text-center"><span class="badge bg-primary-subtle text-primary">${empData.chuaKiemTra}</span></td>
-                        <td class="text-center"><span class="badge bg-warning-subtle text-warning-emphasis">${empData.chuaXuLy}</span></td>
-                        <td class="text-center"><span class="badge bg-success-subtle text-success">${empData.hoanThanh}</span></td>
-                        <td class="text-center fw-bold">${empData.total}</td>
-                    </tr>
-                `;
-            });
-
-            bodyHtml += `
-                        </tbody>
-                    </table>
-                </div>
-            `;
-
-            document.getElementById('modal-leader-body').innerHTML = bodyHtml;
-
-            let myModal = new bootstrap.Modal(document.getElementById('leaderDetailModal'));
-            myModal.show();
-        }
-
-        // --- KHỞI ĐỘI ỨNG DỤNG ---
-        window.onload = function() {
-            // Bước 1: Load dữ liệu từ LocalStorage ngay lập tức nếu có để hiện giao diện siêu nhanh
-            let cached = localStorage.getItem('iqc_sheet_data');
-            if (cached) {
-                try {
-                    globalData = JSON.parse(cached);
-                    updateDependentFilters();
-                    filterData();
-                } catch(e) {}
-            }
-
-            // Bước 2: Gọi ngầm hoặc tải mới dữ liệu từ Google Sheets kèm cơ chế retry tự động
-            fetchSheetData();
-        };
+        // Khởi chạy tải dữ liệu
+        fetchSheetData();
     </script>
 </body>
 </html>
