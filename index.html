@@ -3,102 +3,944 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Đang Bảo Trì</title>
-    <!-- Nhúng Bootstrap 5 để tối ưu giao diện và độ mượt mà -->
+    <title>Hệ Thống Giám Sát & Quản Lý Hợp Đồng IQC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Nhúng FontAwesome để sử dụng icon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .container-fluid { padding: 20px; }
+        .card-stat { background: #fff; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px; border-left: 4px solid #0d6efd; }
+        .tab-content-section { display: none; }
+        .tab-content-section.active { display: block; }
+        
+        /* Khung card cầu thủ bóng đá cho Đội trưởng */
+        .player-card { 
+            background: #fff; 
+            border: 2px solid #e9ecef; 
+            border-radius: 10px; 
+            padding: 15px; 
+            margin-bottom: 15px; 
+            transition: all 0.2s ease-in-out; 
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
         }
-        .maintenance-card {
-            background: #ffffff;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-            max-width: 600px;
-            width: 100%;
-            text-align: center;
+        .player-card:hover { 
+            box-shadow: 0 6px 12px rgba(13, 110, 253, 0.15); 
+            border-color: #0d6efd; 
+            transform: translateY(-3px);
         }
-        .maintenance-icon {
-            font-size: 64px;
-            color: #ffc107;
-            margin-bottom: 20px;
-            animation: bounce 2s infinite;
+        .player-card .leader-name {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #212529;
+            border-bottom: 2px solid #f8f9fa;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
         }
-        @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
-            40% {transform: translateY(-10px);}
-            60% {transform: translateY(-5px);}
-        }
-        .info-box {
-            background-color: #f8f9fa;
-            border-left: 4px solid #0d6efd;
-            padding: 15px;
-            margin: 20px 0;
-            text-align: left;
+        .stat-badge {
+            font-size: 0.75rem;
+            padding: 4px 8px;
             border-radius: 4px;
-            font-size: 14px;
-            color: #495057;
-        }
-        .btn-custom {
-            padding: 12px 25px;
             font-weight: 600;
-            border-radius: 6px;
-            transition: all 0.3s ease;
         }
+
+        /* Style cho Dashboard Báo Cáo Đối Tác - Đội Trưởng */
+        .partner-section { background: #fff; border-radius: 8px; border: 1px solid #dee2e6; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); overflow: hidden; }
+        .partner-header { background: #e9ecef; padding: 12px 20px; font-weight: bold; color: #343a40; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; }
     </style>
 </head>
 <body>
+    <div class="container-fluid">
+        <h2 class="text-center mb-4 fw-bold text-primary">HỆ THỐNG GIÁM SÁT & QUẢN LÝ HỢP ĐỒNG IQC</h2>
+        
+        <div id="alert-container"></div>
 
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="maintenance-card">
-                    <!-- Icon cảnh báo / bảo trì -->
-                    <div class="maintenance-icon">
-                        <i class="fa-solid.fa-triangle-exclamation fa-solid fa-gears"></i>
+        <!-- Điều hướng Tab -->
+        <div class="mb-4 text-center">
+            <button class="btn btn-primary active px-3" id="btn-tab-dashboard" onclick="switchTab('dashboard')"><i class="fa-solid fa-chart-pie me-2"></i>Dashboard Tổng</button>
+            <button class="btn btn-outline-secondary px-3 ms-2" id="btn-tab-daily" onclick="switchTab('daily')"><i class="fa-solid fa-calendar-day me-2"></i>Dashboard Ngày</button>
+            <button class="btn btn-outline-secondary px-3 ms-2" id="btn-tab-report" onclick="switchTab('report')"><i class="fa-solid fa-chart-column me-2"></i>Báo Cáo Đối Tác & Đội Trưởng</button>
+        </div>
+
+        <!-- TAB 1: DASHBOARD TỔNG -->
+        <div id="section-dashboard" class="tab-content-section active">
+            <!-- Thẻ thống kê tổng hợp (4 nội dung) -->
+            <div class="row text-center mb-3">
+                <div class="col-md-3">
+                    <div class="card-stat border-primary">
+                        <h6 class="text-muted fw-bold">CHƯA KIỂM TRA</h6>
+                        <h3 id="sum-chuakiemtra" class="text-primary mb-0">0</h3>
                     </div>
-
-                    <!-- Tiêu đề thông báo -->
-                    <h2 class="fw-bold text-dark mb-3">Dashboard Đang Bảo Trì</h2>
-                    <p class="text-muted mb-4">
-                        Hệ thống thống kê và giám sát trực tuyến đang được nâng cấp để cải thiện hiệu năng. Xin lỗi vì sự bất tiện này!
-                    </p>
-
-                    <!-- Khung hướng dẫn thao tác thay thế -->
-                    <div class="info-box">
-                        <p class="mb-1"><strong>💡 Hướng dẫn xử lý tạm thời:</strong></p>
-                        <p class="mb-1">Trong thời gian bảo trì, Anh/Chị có thể thao tác kiểm tra và xử lý trực tiếp các dữ liệu tồn đọng tại trang tính hệ thống:</p>
-                        <ul class="mb-0 ps-3">
-                            <li><strong>Tab làm việc:</strong> <span class="badge bg-secondary">IQC-BACKUP</span></li>
-                            <li><strong>Khu vực theo dõi trọng tâm:</strong> Cột <span class="badge bg-primary">BD</span> và <span class="badge bg-primary">BE</span></li>
-                        </ul>
+                </div>
+                <div class="col-md-3">
+                    <div class="card-stat border-warning">
+                        <h6 class="text-muted fw-bold">CHƯA XỬ LÝ</h6>
+                        <h3 id="sum-chuaxuly" class="text-warning mb-0">0</h3>
                     </div>
-
-                    <!-- Nút truy cập nhanh Google Sheets -->
-                    <div class="mt-4">
-                        <a href="https://docs.google.com/spreadsheets/d/1_zVN_SHZYt4BQwgdmErPj4o9Mg3kQ5O9fLmQoFUI7BA/edit?gid=1688243172#gid=1688243172" 
-                           target="_blank" 
-                           class="btn btn-primary btn-custom shadow-sm">
-                            <i class="fa-solid fa-file-excel me-2"></i> Mở Trang Tính Xử Lý Tồn Đọng
-                        </a>
+                </div>
+                <div class="col-md-3">
+                    <div class="card-stat border-success">
+                        <h6 class="text-muted fw-bold">ĐÃ HOÀN THÀNH</h6>
+                        <h3 id="sum-hoanthanh" class="text-success mb-0">0</h3>
                     </div>
-
-                    <div class="mt-4 text-muted small">
-                        <span>Hệ thống sẽ tự động khôi phục lại trong thời gian sớm nhất.</span>
+                </div>
+                <div class="col-md-3">
+                    <div class="card-stat border-secondary">
+                        <h6 class="text-muted fw-bold">TỔNG SỐ LƯỢNG</h6>
+                        <h3 id="sum-tong" class="text-secondary mb-0">0</h3>
                     </div>
+                </div>
+            </div>
+
+            <!-- Bộ lọc phân cấp từ To đến Nhỏ -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                    <span class="fw-bold text-secondary"><i class="fa-solid fa-filter me-2"></i>Bộ lọc phân cấp dữ liệu</span>
+                    <button class="btn btn-outline-danger btn-sm" onclick="resetFilters()"><i class="fa-solid fa-rotate-left me-1"></i> Reset bộ lọc</button>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold small">1. Tháng</label>
+                            <select id="filter-thang" class="form-select form-select-sm" onchange="onFilterChange('thang')"><option value="">Tất cả</option></select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold small">2. Vùng (A)</label>
+                            <select id="filter-vung" class="form-select form-select-sm" onchange="onFilterChange('vung')"><option value="">Tất cả</option></select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold small">3. Đối tác quản lý (B)</label>
+                            <select id="filter-doitac" class="form-select form-select-sm" onchange="onFilterChange('doitac')"><option value="">Tất cả</option></select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold small text-primary">4. Đội trưởng (C) *</label>
+                            <select id="filter-doitruong" class="form-select form-select-sm border-primary" onchange="onFilterChange('doitruong')"><option value="">-- Chọn Đội trưởng --</option></select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold small">5. Block quản lý (D)</label>
+                            <select id="filter-block" class="form-select form-select-sm" onchange="onFilterChange('block')"><option value="">Tất cả</option></select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold small text-danger">6. Nhân viên (E) *</label>
+                            <select id="filter-nhanvien" class="form-select form-select-sm border-danger" onchange="onFilterChange('nhanvien')"><option value="">-- Chọn Nhân viên --</option></select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bảng dữ liệu tồn đọng -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
+                    <span><i class="fa-solid fa-list-check me-2"></i>Danh sách dữ liệu tồn đọng xử lý</span>
+                    <div>
+                        <button id="btn-bulk-submit" class="btn btn-sm btn-success me-2" onclick="bulkSubmit()" disabled><i class="fa-solid fa-paper-plane me-1"></i> Gửi dữ liệu đã chọn</button>
+                        <label class="small me-1 text-white">Hiển thị:</label>
+                        <select id="select-limit" class="form-select form-select-sm d-inline-block w-auto" onchange="filterData()">
+                            <option value="50">50 dòng</option>
+                            <option value="100">100 dòng</option>
+                            <option value="all">Tất cả</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 550px; overflow-y: auto;">
+                        <table class="table table-striped table-hover align-middle mb-0 small">
+                            <thead class="table-secondary sticky-top">
+                                <tr>
+                                    <th><input type="checkbox" id="select-all" onclick="toggleSelectAll(this)" disabled></th>
+                                    <th>STT</th>
+                                    <th>Vùng</th>
+                                    <th>Đối tác</th>
+                                    <th>Đội trưởng</th>
+                                    <th>Block</th>
+                                    <th>Nhân viên</th>
+                                    <th>Số hợp đồng</th>
+                                    <th>Ngày PTC</th>
+                                    <th>Kết quả Check (H)</th>
+                                    <th>Hướng xử lý chưa đạt chuẩn (I)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-body">
+                                <tr><td colspan="11" class="text-center py-5 text-muted">Vui lòng chọn bộ lọc đến cấp <strong>Đội trưởng</strong> hoặc <strong>Nhân viên</strong> để kích hoạt tính năng chọn và gửi nhiều kết quả.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: DASHBOARD NGÀY -->
+        <div id="section-daily" class="tab-content-section">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small">Chọn Tháng:</label>
+                            <select id="daily-filter-thang" class="form-select form-select-sm" onchange="renderDailyDashboard()"><option value="">Tất cả các tháng</option></select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small">Chọn Ngày:</label>
+                            <select id="daily-filter-ngay" class="form-select form-select-sm" onchange="renderDailyDashboard()"><option value="">Tất cả các ngày</option></select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small">Chọn Đội Trưởng:</label>
+                            <select id="daily-filter-doitruong" class="form-select form-select-sm" onchange="renderDailyDashboard()"><option value="">Tất cả đội trưởng</option></select>
+                        </div>
+                        <div class="col-md-3 text-end d-flex align-items-end justify-content-end">
+                            <button class="btn btn-outline-secondary btn-sm" onclick="resetDailyFilters()"><i class="fa-solid fa-rotate-left me-1"></i> Xóa bộ lọc ngày</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="player-cards-container" class="row"></div>
+        </div>
+
+        <!-- TAB 3: DASHBOARD BÁO CÁO THEO ĐỐI TÁC & ĐỘI TRƯỞNG -->
+        <div id="section-report" class="tab-content-section">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold small">Chọn Tháng báo cáo:</label>
+                            <select id="report-filter-thang" class="form-select form-select-sm" onchange="renderReportDashboard()"><option value="">Tất cả các tháng</option></select>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold small">Chọn Đối tác quản lý:</label>
+                            <select id="report-filter-doitac" class="form-select form-select-sm" onchange="renderReportDashboard()"><option value="">Tất cả đối tác</option></select>
+                        </div>
+                        <div class="col-md-2 text-end d-flex align-items-end justify-content-end">
+                            <button class="btn btn-outline-secondary btn-sm w-100" onclick="resetReportFilters()"><i class="fa-solid fa-rotate-left me-1"></i> Xóa lọc</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="report-container"></div>
+        </div>
+    </div>
+
+    <!-- Modal Hiển thị Hiệu quả Công việc của Đội Trưởng -->
+    <div class="modal fade" id="leaderDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="modal-leader-title"><i class="fa-solid fa-user-tie me-2"></i>Hiệu quả công việc đội trưởng</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="modal-leader-body">
+                    <!-- Nội dung chi tiết nhân sự sẽ được render tại đây -->
                 </div>
             </div>
         </div>
     </div>
 
+    <script>
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxgpBSG9IkPyASBknJtq1_cgjZV0WT0TpSS8FtgCLCBtoyj1ET-LCXGavSzNEPx6dIR/exec";
+        
+        let globalData = { headers: [], rows: [] };
+        const COL = { VUNG: 0, DOITAC: 1, DOITRUONG: 2, BLOCK: 3, NHANVIEN: 4, HOPDONG: 5, NGAY_PTC: 6, CHECK: 7, HUONG_XY: 8, LOG: 9 };
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.container-fluid .btn').forEach(el => {
+                if(el.id.startsWith('btn-tab-')) {
+                    el.classList.remove('btn-primary', 'active');
+                    el.classList.add('btn-outline-secondary');
+                }
+            });
+
+            if (tabName === 'dashboard') {
+                document.getElementById('section-dashboard').classList.add('active');
+                let btn = document.getElementById('btn-tab-dashboard');
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-primary', 'active');
+            } else if (tabName === 'daily') {
+                document.getElementById('section-daily').classList.add('active');
+                let btn = document.getElementById('btn-tab-daily');
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-primary', 'active');
+                initDailyFilters();
+                renderDailyDashboard();
+            } else if (tabName === 'report') {
+                document.getElementById('section-report').classList.add('active');
+                let btn = document.getElementById('btn-tab-report');
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-primary', 'active');
+                initReportFilters();
+                renderReportDashboard();
+            }
+        }
+
+        function fetchSheetData() {
+            var callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+            window[callbackName] = function(data) {
+                delete window[callbackName];
+                if (script.parentNode) script.parentNode.removeChild(script);
+                
+                if (data && data.rows) {
+                    globalData = data;
+                    updateDependentFilters();
+                    filterData();
+                } else {
+                    showError("Dữ liệu trả về từ Google Sheets không hợp lệ.");
+                }
+            };
+
+            var script = document.createElement('script');
+            script.src = WEB_APP_URL + "?action=getData&callback=" + callbackName;
+            script.onerror = function() {
+                showError("Không thể kết nối đến Google Sheets API. Hãy kiểm tra lại URL triển khai.");
+            };
+            document.body.appendChild(script);
+        }
+
+        function showError(msg) {
+            document.getElementById('alert-container').innerHTML = `<div class="alert alert-danger">❌ ${msg}</div>`;
+        }
+
+        function formatNgayPTC(valG) {
+            if (!valG) return "";
+            let str = String(valG).trim();
+            if (str.includes("T") || str.includes("-")) {
+                let d = new Date(str);
+                if (!isNaN(d.getTime())) {
+                    let day = String(d.getDate()).padStart(2, '0');
+                    let month = String(d.getMonth() + 1).padStart(2, '0');
+                    let year = d.getFullYear();
+                    let hours = String(d.getHours()).padStart(2, '0');
+                    let minutes = String(d.getMinutes()).padStart(2, '0');
+                    return `${day}/${month}/${year} ${hours}:${minutes}`;
+                }
+            }
+            return str;
+        }
+
+        function getNgayThang(valG) {
+            let formatted = formatNgayPTC(valG);
+            let ngay = formatted.length >= 2 ? formatted.substring(0, 2) : "";
+            let thang = formatted.length >= 10 ? formatted.substring(3, 10) : "";
+            return { ngay, thang, formatted };
+        }
+
+        function updateDependentFilters() {
+            let fThang = document.getElementById('filter-thang').value;
+            let fVung = document.getElementById('filter-vung').value;
+            let fDoitac = document.getElementById('filter-doitac').value;
+            let fDoitruong = document.getElementById('filter-doitruong').value;
+            let fBlock = document.getElementById('filter-block').value;
+            let fNhanvien = document.getElementById('filter-nhanvien').value;
+
+            let setThang = new Set(), setVung = new Set(), setDoitac = new Set(), setDoitruong = new Set(), setBlock = new Set(), setNhanvien = new Set();
+
+            globalData.rows.forEach(r => {
+                let v = r.values;
+                let dt = getNgayThang(v[COL.NGAY_PTC]);
+                if (dt.thang) setThang.add(dt.thang);
+            });
+
+            let rowsForVung = globalData.rows.filter(r => !fThang || getNgayThang(r.values[COL.NGAY_PTC]).thang === fThang);
+            rowsForVung.forEach(r => { if (r.values[COL.VUNG]) setVung.add(String(r.values[COL.VUNG]).trim()); });
+
+            let rowsForDoitac = rowsForVung.filter(r => !fVung || String(r.values[COL.VUNG]).trim() === fVung);
+            rowsForDoitac.forEach(r => { if (r.values[COL.DOITAC]) setDoitac.add(String(r.values[COL.DOITAC]).trim()); });
+
+            let rowsForDoitruong = rowsForDoitac.filter(r => !fDoitac || String(r.values[COL.DOITAC]).trim() === fDoitac);
+            rowsForDoitruong.forEach(r => { if (r.values[COL.DOITRUONG]) setDoitruong.add(String(r.values[COL.DOITRUONG]).trim()); });
+
+            let rowsForBlock = rowsForDoitruong.filter(r => !fDoitruong || String(r.values[COL.DOITRUONG]).trim() === fDoitruong);
+            rowsForBlock.forEach(r => { if (r.values[COL.BLOCK]) setBlock.add(String(r.values[COL.BLOCK]).trim()); });
+
+            let rowsForNhanvien = rowsForBlock.filter(r => !fBlock || String(r.values[COL.BLOCK]).trim() === fBlock);
+            rowsForNhanvien.forEach(r => { if (r.values[COL.NHANVIEN]) setNhanvien.add(String(r.values[COL.NHANVIEN]).trim()); });
+
+            fillSelect('filter-thang', Array.from(setThang).sort(), fThang);
+            fillSelect('filter-vung', Array.from(setVung).sort(), fVung);
+            fillSelect('filter-doitac', Array.from(setDoitac).sort(), fDoitac);
+            
+            let selDoitruong = document.getElementById('filter-doitruong');
+            let dtArr = Array.from(setDoitruong).sort();
+            selDoitruong.innerHTML = '<option value="">-- Chọn Đội trưởng --</option>' + dtArr.map(x => `<option value="${x}">${x}</option>`).join('');
+            selDoitruong.value = dtArr.includes(fDoitruong) ? fDoitruong : "";
+
+            fillSelect('filter-block', Array.from(setBlock).sort(), fBlock);
+
+            let selNhanvien = document.getElementById('filter-nhanvien');
+            let nvArr = Array.from(setNhanvien).sort();
+            selNhanvien.innerHTML = '<option value="">-- Chọn Nhân viên --</option>' + nvArr.map(x => `<option value="${x}">${x}</option>`).join('');
+            selNhanvien.value = nvArr.includes(fNhanvien) ? fNhanvien : "";
+        }
+
+        function fillSelect(id, arr, currentVal) {
+            let sel = document.getElementById(id);
+            sel.innerHTML = '<option value="">Tất cả</option>' + arr.map(x => `<option value="${x}">${x}</option>`).join('');
+            sel.value = arr.includes(currentVal) ? currentVal : "";
+        }
+
+        function onFilterChange(level) {
+            if (level === 'thang') {
+                document.getElementById('filter-vung').value = "";
+                document.getElementById('filter-doitac').value = "";
+                document.getElementById('filter-doitruong').value = "";
+                document.getElementById('filter-block').value = "";
+                document.getElementById('filter-nhanvien').value = "";
+            } else if (level === 'vung') {
+                document.getElementById('filter-doitac').value = "";
+                document.getElementById('filter-doitruong').value = "";
+                document.getElementById('filter-block').value = "";
+                document.getElementById('filter-nhanvien').value = "";
+            } else if (level === 'doitac') {
+                document.getElementById('filter-doitruong').value = "";
+                document.getElementById('filter-block').value = "";
+                document.getElementById('filter-nhanvien').value = "";
+            } else if (level === 'doitruong') {
+                document.getElementById('filter-block').value = "";
+                document.getElementById('filter-nhanvien').value = "";
+            } else if (level === 'block') {
+                document.getElementById('filter-nhanvien').value = "";
+            }
+
+            updateDependentFilters();
+            filterData();
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-thang').value = "";
+            document.getElementById('filter-vung').value = "";
+            document.getElementById('filter-doitac').value = "";
+            document.getElementById('filter-doitruong').value = "";
+            document.getElementById('filter-block').value = "";
+            document.getElementById('filter-nhanvien').value = "";
+            
+            updateDependentFilters();
+            filterData();
+        }
+
+        function getRecordStatus(vals) {
+            let check = vals[COL.CHECK] ? String(vals[COL.CHECK]).trim() : "";
+            let xuLy = vals[COL.HUONG_XY] ? String(vals[COL.HUONG_XY]).trim() : "";
+
+            if (check === "" || check.toLowerCase().includes("chưa kiểm tra")) {
+                return "CHUA_KIEM_TRA";
+            }
+            if (check.toLowerCase().includes("đã đạt chuẩn 6 hình")) {
+                return "HOAN_THANH";
+            }
+            if (check.toLowerCase().includes("chưa đạt chuẩn")) {
+                if (xuLy.toLowerCase().includes("đã xử lý lại")) {
+                    return "HOAN_THANH";
+                }
+                return "CHUA_XU_LY";
+            }
+            return "CHUA_KIEM_TRA";
+        }
+
+        function updateSummary(allRows) {
+            let chuaKiemTra = 0, chuaXuLy = 0, hoanthanh = 0;
+
+            allRows.forEach(r => {
+                let status = getRecordStatus(r.values);
+                if (status === "HOAN_THANH") hoanthanh++;
+                else if (status === "CHUA_KIEM_TRA") chuaKiemTra++;
+                else if (status === "CHUA_XU_LY") chuaXuLy++;
+            });
+
+            document.getElementById('sum-chuakiemtra').innerText = chuaKiemTra;
+            document.getElementById('sum-chuaxuly').innerText = chuaXuLy;
+            document.getElementById('sum-hoanthanh').innerText = hoanthanh;
+            document.getElementById('sum-tong').innerText = allRows.length;
+        }
+
+        function filterData() {
+            let fDoitruong = document.getElementById('filter-doitruong').value;
+            let fNhanvien = document.getElementById('filter-nhanvien').value;
+            let btnBulk = document.getElementById('btn-bulk-submit');
+            let selectAllCheckbox = document.getElementById('select-all');
+
+            let isAllowed = (fDoitruong !== "" || fNhanvien !== "");
+
+            if (!isAllowed) {
+                btnBulk.disabled = true;
+                selectAllCheckbox.disabled = true;
+                selectAllCheckbox.checked = false;
+                
+                document.getElementById('table-body').innerHTML = `<tr><td colspan="11" class="text-center text-danger py-4 fw-bold">⚠️ Vui lòng chọn cụ thể ít nhất một <strong>Đội trưởng</strong> hoặc <strong>Nhân viên</strong> ở bộ lọc phía trên để kích hoạt tính năng chọn và gửi nhiều kết quả!</td></tr>`;
+                updateSummary(globalData.rows);
+                return;
+            }
+
+            btnBulk.disabled = false;
+            selectAllCheckbox.disabled = false;
+
+            let fThang = document.getElementById('filter-thang').value;
+            let fVung = document.getElementById('filter-vung').value;
+            let fDoitac = document.getElementById('filter-doitac').value;
+            let fBlock = document.getElementById('filter-block').value;
+
+            let filtered = globalData.rows.filter(r => {
+                let v = r.values;
+                let dt = getNgayThang(v[COL.NGAY_PTC]);
+
+                if (fThang && dt.thang !== fThang) return false;
+                if (fVung && String(v[COL.VUNG]).trim() !== fVung) return false;
+                if (fDoitac && String(v[COL.DOITAC]).trim() !== fDoitac) return false;
+                if (fDoitruong && String(v[COL.DOITRUONG]).trim() !== fDoitruong) return false;
+                if (fBlock && String(v[COL.BLOCK]).trim() !== fBlock) return false;
+                if (fNhanvien && String(v[COL.NHANVIEN]).trim() !== fNhanvien) return false;
+
+                let status = getRecordStatus(v);
+                if (status === "HOAN_THANH") return false;
+
+                return true;
+            });
+
+            updateSummary(globalData.rows);
+
+            let limit = document.getElementById('select-limit').value;
+            let displayRows = limit === 'all' ? filtered : filtered.slice(0, parseInt(limit));
+
+            renderTable(displayRows);
+        }
+
+        function renderTable(rows) {
+            let tbody = document.getElementById('table-body');
+            if (rows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4">Không có dữ liệu tồn đọng phù hợp.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = rows.map((r, idx) => {
+                let v = r.values;
+                let status = getRecordStatus(v);
+                let displayNgayPTC = formatNgayPTC(v[COL.NGAY_PTC]);
+
+                let checkInputHtml = '';
+                let xuLyInputHtml = '';
+
+                if (status === "CHUA_KIEM_TRA") {
+                    checkInputHtml = `
+                        <select class="form-select form-select-sm check-select" data-row="${r.rowIndex}" onchange="onCheckResultChange(this)">
+                            <option value="">-- Chọn kết quả check --</option>
+                            <option value="Đã đạt chuẩn 6 hình">Đã đạt chuẩn 6 hình</option>
+                            <option value="Chưa đạt chuẩn">Chưa đạt chuẩn</option>
+                        </select>
+                    `;
+                    xuLyInputHtml = `<span class="text-muted small">-</span>`;
+                } else if (status === "CHUA_XU_LY") {
+                    checkInputHtml = `<span class="badge bg-warning text-dark">Chưa đạt chuẩn</span>`;
+                    
+                    let currentXuLy = v[COL.HUONG_XY] || "";
+                    xuLyInputHtml = `
+                        <select class="form-select form-select-sm xuly-select" data-row="${r.rowIndex}">
+                            <option value="">-- Chọn hướng xử lý --</option>
+                            <option value="Đã chuyển KTV yêu cầu update lại" ${currentXuLy === 'Đã chuyển KTV yêu cầu update lại' ? 'selected' : ''}>Đã chuyển KTV yêu cầu update lại</option>
+                            <option value="Đã xử lý lại" ${currentXuLy === 'Đã xử lý lại' ? 'selected' : ''}>Đã xử lý lại</option>
+                        </select>
+                    `;
+                }
+
+                return `
+                    <tr>
+                        <td><input type="checkbox" class="row-checkbox" value="${r.rowIndex}"></td>
+                        <td>${idx + 1}</td>
+                        <td>${v[COL.VUNG] || ''}</td>
+                        <td>${v[COL.DOITAC] || ''}</td>
+                        <td>${v[COL.DOITRUONG] || ''}</td>
+                        <td>${v[COL.BLOCK] || ''}</td>
+                        <td>${v[COL.NHANVIEN] || ''}</td>
+                        <td class="fw-bold text-primary">${v[COL.HOPDONG] || ''}</td>
+                        <td>${displayNgayPTC}</td>
+                        <td class="td-check" data-row="${r.rowIndex}">${checkInputHtml}</td>
+                        <td class="td-xuly" data-row="${r.rowIndex}">${xuLyInputHtml}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function onCheckResultChange(selectElem) {
+            let rowIndex = selectElem.getAttribute('data-row');
+            let val = selectElem.value;
+            let tr = selectElem.closest('tr');
+            let xulyTd = tr.querySelector('.td-xuly');
+
+            if (val === "Chưa đạt chuẩn") {
+                xulyTd.innerHTML = `
+                    <select class="form-select form-select-sm xuly-select" data-row="${rowIndex}">
+                        <option value="">-- Chọn hướng xử lý --</option>
+                        <option value="Đã chuyển KTV yêu cầu update lại">Đã chuyển KTV yêu cầu update lại</option>
+                        <option value="Đã xử lý lại">Đã xử lý lại</option>
+                    </select>
+                `;
+            } else {
+                xulyTd.innerHTML = `<span class="text-muted small">-</span>`;
+            }
+        }
+
+        function toggleSelectAll(master) {
+            document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = master.checked);
+        }
+
+        function bulkSubmit() {
+            let checkboxes = document.querySelectorAll('.row-checkbox:checked');
+            
+            if (checkboxes.length === 0) {
+                alert("Vui lòng chọn ít nhất một dòng để gửi dữ liệu!");
+                return;
+            }
+
+            let updates = [];
+            checkboxes.forEach(cb => {
+                let rowIndex = cb.value;
+                let tr = cb.closest('tr');
+                
+                let checkVal = "";
+                let xuLyVal = "";
+
+                let checkSelect = tr.querySelector('.check-select');
+                if (checkSelect) {
+                    checkVal = checkSelect.value;
+                } else {
+                    let badge = tr.querySelector('.badge');
+                    if (badge) checkVal = "Chưa đạt chuẩn";
+                }
+
+                let xulySelect = tr.querySelector('.xuly-select');
+                if (xulySelect) {
+                    xuLyVal = xulySelect.value;
+                }
+
+                updates.push({ rowIndex, checkVal, xuLyVal });
+            });
+
+            // Lấy thông tin filter đang chọn để ghi vào log cho rõ ngữ cảnh thao tác
+            let activeDoiTruong = document.getElementById('filter-doitruong').value || "Chung";
+            let activeNhanVien = document.getElementById('filter-nhanvien').value || "Tất cả NV";
+            
+            // Tạo chuỗi thời gian ghi log hiện tại
+            let now = new Date();
+            let timeStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+            let count = 0;
+            let total = updates.length;
+
+            document.getElementById('alert-container').innerHTML = `<div class="alert alert-info">⏳ Đang cập nhật ${total} dòng lên Google Sheets và ghi log cột J...</div>`;
+
+            updates.forEach(item => {
+                // Tạo nội dung Log thao tác cho cột J
+                let actionDesc = item.checkVal === "Đã đạt chuẩn 6 hình" ? "Check: Đã đạt chuẩn 6 hình" : `Check: ${item.checkVal}${item.xuLyVal ? ' | Xử lý: ' + item.xuLyVal : ''}`;
+                let logContent = `[${timeStr}] ĐT: ${activeDoiTruong} | NV: ${activeNhanVien} | ${actionDesc}`;
+
+                var callbackName = 'jsonp_update_' + Math.round(100000 * Math.random()) + '_' + item.rowIndex;
+                window[callbackName] = function(res) {
+                    delete window[callbackName];
+                    if (script.parentNode) script.parentNode.removeChild(script);
+                    
+                    let rowObj = globalData.rows.find(r => r.rowIndex == item.rowIndex);
+                    if (rowObj) {
+                        if (item.checkVal) rowObj.values[COL.CHECK] = item.checkVal;
+                        if (item.xuLyVal) rowObj.values[COL.HUONG_XY] = item.xuLyVal;
+                        rowObj.values[COL.LOG] = logContent; // Cập nhật log trên client
+                    }
+
+                    count++;
+                    if (count === total) {
+                        document.getElementById('alert-container').innerHTML = `<div class="alert alert-success">✅ Cập nhật thành công ${total} dòng, đã ghi log vào cột J và ẩn các mục hoàn thành!</div>`;
+                        setTimeout(() => { document.getElementById('alert-container').innerHTML = ''; }, 3000);
+                        filterData(); 
+                    }
+                };
+
+                var script = document.createElement('script');
+                // Gửi thêm tham số logVal lên Apps Script để ghi vào cột J
+                script.src = `${WEB_APP_URL}?action=updateData&rowIndex=${item.rowIndex}&checkVal=${encodeURIComponent(item.checkVal)}&xuLyVal=${encodeURIComponent(item.xuLyVal)}&logVal=${encodeURIComponent(logContent)}&callback=${callbackName}`;
+                script.onerror = function() {
+                    count++;
+                    if (count === total) {
+                        document.getElementById('alert-container').innerHTML = `<div class="alert alert-danger">❌ Có lỗi xảy ra khi cập nhật.</div>`;
+                    }
+                };
+                document.body.appendChild(script);
+            });
+        }
+
+        function initDailyFilters() {
+            let setThang = new Set(), setNgay = new Set(), setDoiTruong = new Set();
+            globalData.rows.forEach(r => {
+                let dt = getNgayThang(r.values[COL.NGAY_PTC]);
+                if (dt.thang) setThang.add(dt.thang);
+                if (dt.ngay) setNgay.add(dt.ngay);
+                let dtTruong = r.values[COL.DOITRUONG] ? String(r.values[COL.DOITRUONG]).trim() : "";
+                if (dtTruong) setDoiTruong.add(dtTruong);
+            });
+
+            fillSelect('daily-filter-thang', Array.from(setThang).sort(), document.getElementById('daily-filter-thang').value);
+            fillSelect('daily-filter-ngay', Array.from(setNgay).sort(), document.getElementById('daily-filter-ngay').value);
+            fillSelect('daily-filter-doitruong', Array.from(setDoiTruong).sort(), document.getElementById('daily-filter-doitruong').value);
+        }
+
+        function resetDailyFilters() {
+            document.getElementById('daily-filter-thang').value = "";
+            document.getElementById('daily-filter-ngay').value = "";
+            document.getElementById('daily-filter-doitruong').value = "";
+            renderDailyDashboard();
+        }
+
+        function renderDailyDashboard() {
+            let fThang = document.getElementById('daily-filter-thang').value;
+            let fNgay = document.getElementById('daily-filter-ngay').value;
+            let fDoiTruong = document.getElementById('daily-filter-doitruong').value;
+            let container = document.getElementById('player-cards-container');
+            let employeeMap = {};
+
+            globalData.rows.forEach(r => {
+                let v = r.values;
+                let dt = getNgayThang(v[COL.NGAY_PTC]);
+                if (fThang && dt.thang !== fThang) return;
+                if (fNgay && dt.ngay !== fNgay) return;
+                let doiTruongVal = v[COL.DOITRUONG] ? String(v[COL.DOITRUONG]).trim() : "";
+                if (fDoiTruong && doiTruongVal !== fDoiTruong) return;
+
+                let status = getRecordStatus(v);
+                if (status === "HOAN_THANH") return;
+
+                let nv = v[COL.NHANVIEN] || "Chưa phân công";
+                if (!employeeMap[nv]) {
+                    employeeMap[nv] = { total: 0, doiTruong: doiTruongVal, vung: v[COL.VUNG] };
+                }
+                employeeMap[nv].total++;
+            });
+
+            let sortedEmployees = Object.keys(employeeMap).sort((a, b) => employeeMap[b].total - employeeMap[a].total);
+
+            if (sortedEmployees.length === 0) {
+                container.innerHTML = `<div class="col-12 text-center text-muted py-5">Không có dữ liệu tồn đọng phù hợp với bộ lọc ngày và đội trưởng.</div>`;
+                return;
+            }
+
+            container.innerHTML = sortedEmployees.map(nv => {
+                let data = employeeMap[nv];
+                return `
+                    <div class="col-md-4 col-lg-3">
+                        <div class="player-card">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-dark text-truncate" style="font-size: 0.9rem;" title="${nv}"><i class="fa-solid fa-user-tie me-1 text-primary"></i>${nv}</span>
+                                <span class="badge bg-danger rounded-pill" style="font-size: 0.75rem;">${data.total} tồn</span>
+                            </div>
+                            <div class="text-muted" style="font-size: 0.75rem;">
+                                <div>Vùng: ${data.vung || '-'}</div>
+                                <div class="text-truncate">Đội trưởng: ${data.doiTruong || '-'}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- DASHBOARD BÁO CÁO THEO ĐỐI TÁC & ĐỘI TRƯỞNG (DẠNG THẺ CẦU THỦ 4 CHỈ SỐ) ---
+        function initReportFilters() {
+            let setThang = new Set(), setDoitac = new Set();
+            globalData.rows.forEach(r => {
+                let v = r.values;
+                let dt = getNgayThang(v[COL.NGAY_PTC]);
+                if (dt.thang) setThang.add(dt.thang);
+                let doitacVal = v[COL.DOITAC] ? String(v[COL.DOITAC]).trim() : "";
+                if (doitacVal) setDoitac.add(doitacVal);
+            });
+
+            fillSelect('report-filter-thang', Array.from(setThang).sort(), document.getElementById('report-filter-thang').value);
+            fillSelect('report-filter-doitac', Array.from(setDoitac).sort(), document.getElementById('report-filter-doitac').value);
+        }
+
+        function resetReportFilters() {
+            document.getElementById('report-filter-thang').value = "";
+            document.getElementById('report-filter-doitac').value = "";
+            renderReportDashboard();
+        }
+
+        let reportLeaderDataStore = {};
+
+        function renderReportDashboard() {
+            let fThang = document.getElementById('report-filter-thang').value;
+            let fDoitac = document.getElementById('report-filter-doitac').value;
+            let container = document.getElementById('report-container');
+
+            reportLeaderDataStore = {}; 
+
+            globalData.rows.forEach(r => {
+                let v = r.values;
+                let dt = getNgayThang(v[COL.NGAY_PTC]);
+                if (fThang && dt.thang !== fThang) return;
+                
+                let partner = v[COL.DOITAC] ? String(v[COL.DOITAC]).trim() : "Chưa xác định đối tác";
+                if (fDoitac && partner !== fDoitac) return;
+
+                let leader = v[COL.DOITRUONG] ? String(v[COL.DOITRUONG]).trim() : "Chưa xác định đội trưởng";
+                let employee = v[COL.NHANVIEN] ? String(v[COL.NHANVIEN]).trim() : "Chưa phân công";
+                let status = getRecordStatus(v); // "HOAN_THANH", "CHUA_KIEM_TRA", hoặc "CHUA_XU_LY"
+
+                if (!reportLeaderDataStore[partner]) {
+                    reportLeaderDataStore[partner] = { 
+                        total: 0, chuaKiemTra: 0, chuaXuLy: 0, hoanThanh: 0, leaders: {} 
+                    };
+                }
+                
+                let pData = reportLeaderDataStore[partner];
+                pData.total++;
+                if (status === "CHUA_KIEM_TRA") pData.chuaKiemTra++;
+                else if (status === "CHUA_XU_LY") pData.chuaXuLy++;
+                else if (status === "HOAN_THANH") pData.hoanThanh++;
+
+                if (!pData.leaders[leader]) {
+                    pData.leaders[leader] = { 
+                        total: 0, chuaKiemTra: 0, chuaXuLy: 0, hoanThanh: 0, employees: {} 
+                    };
+                }
+
+                let lData = pData.leaders[leader];
+                lData.total++;
+                if (status === "CHUA_KIEM_TRA") lData.chuaKiemTra++;
+                else if (status === "CHUA_XU_LY") lData.chuaXuLy++;
+                else if (status === "HOAN_THANH") lData.hoanThanh++;
+
+                if (!lData.employees[employee]) {
+                    lData.employees[employee] = { total: 0, chuaKiemTra: 0, chuaXuLy: 0, hoanThanh: 0 };
+                }
+                let empData = lData.employees[employee];
+                empData.total++;
+                if (status === "CHUA_KIEM_TRA") empData.chuaKiemTra++;
+                else if (status === "CHUA_XU_LY") empData.chuaXuLy++;
+                else if (status === "HOAN_THANH") empData.hoanThanh++;
+            });
+
+            let sortedPartners = Object.keys(reportLeaderDataStore).sort((a, b) => reportLeaderDataStore[b].total - reportLeaderDataStore[a].total);
+
+            if (sortedPartners.length === 0) {
+                container.innerHTML = `<div class="text-center text-muted py-5">Không có dữ liệu báo cáo phù hợp.</div>`;
+                return;
+            }
+
+            let html = '';
+            sortedPartners.forEach(partner => {
+                let pData = reportLeaderDataStore[partner];
+                html += `
+                    <div class="partner-section mb-4">
+                        <div class="partner-header bg-light p-3 border rounded-top d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-primary fs-5"><i class="fa-solid fa-handshake me-2"></i>Đối tác: ${partner}</span>
+                            <div>
+                                <span class="badge bg-primary me-2">Tổng: ${pData.total}</span>
+                                <span class="badge bg-success">Hoàn thành: ${pData.hoanThanh}</span>
+                            </div>
+                        </div>
+                        <div class="p-3 bg-white border border-top-0 rounded-bottom">
+                            <div class="row">
+                `;
+
+                let sortedLeaders = Object.keys(pData.leaders).sort((a, b) => pData.leaders[b].total - pData.leaders[a].total);
+                sortedLeaders.forEach(leader => {
+                    let lData = pData.leaders[leader];
+                    let safeLeader = encodeURIComponent(leader);
+                    let safePartner = encodeURIComponent(partner);
+
+                    html += `
+                        <div class="col-md-4 col-lg-3">
+                            <div class="player-card" onclick="openLeaderDetail('${safePartner}', '${safeLeader}')">
+                                <div class="leader-name text-truncate" title="${leader}">
+                                    <i class="fa-solid fa-user-tie me-1 text-success"></i>${leader}
+                                </div>
+                                <div class="d-flex justify-content-between mb-1 small">
+                                    <span class="text-muted">CHƯA KIỂM TRA:</span>
+                                    <span class="stat-badge bg-primary-subtle text-primary">${lData.chuaKiemTra}</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-1 small">
+                                    <span class="text-muted">CHƯA XỬ LÝ:</span>
+                                    <span class="stat-badge bg-warning-subtle text-warning-emphasis">${lData.chuaXuLy}</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-1 small">
+                                    <span class="text-muted">ĐÃ HOÀN THÀNH:</span>
+                                    <span class="stat-badge bg-success-subtle text-success">${lData.hoanThanh}</span>
+                                </div>
+                                <div class="d-flex justify-content-between pt-1 border-top mt-2 fw-bold small">
+                                    <span class="text-secondary">TỔNG SỐ LƯỢNG:</span>
+                                    <span class="text-dark">${lData.total}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function openLeaderDetail(encodedPartner, encodedLeader) {
+            let partner = decodeURIComponent(encodedPartner);
+            let leader = decodeURIComponent(encodedLeader);
+
+            let pData = reportLeaderDataStore[partner];
+            if (!pData || !pData.leaders[leader]) return;
+
+            let lData = pData.leaders[leader];
+            
+            document.getElementById('modal-leader-title').innerHTML = `<i class="fa-solid fa-user-tie me-2"></i>Đội trưởng: ${leader} <span class="badge bg-light text-dark ms-2">Đối tác: ${partner}</span>`;
+
+            let sortedEmployees = Object.keys(lData.employees).sort((a, b) => lData.employees[b].total - lData.employees[a].total);
+
+            let bodyHtml = `
+                <div class="row text-center mb-3 g-2">
+                    <div class="col-3"><div class="p-2 border rounded bg-light"><small class="text-muted d-block" style="font-size:11px;">CHƯA KIỂM TRA</small><strong>${lData.chuaKiemTra}</strong></div></div>
+                    <div class="col-3"><div class="p-2 border rounded bg-light"><small class="text-muted d-block" style="font-size:11px;">CHƯA XỬ LÝ</small><strong>${lData.chuaXuLy}</strong></div></div>
+                    <div class="col-3"><div class="p-2 border rounded bg-light"><small class="text-muted d-block" style="font-size:11px;">ĐÃ HOÀN THÀNH</small><strong>${lData.hoanThanh}</strong></div></div>
+                    <div class="col-3"><div class="p-2 border rounded bg-light"><small class="text-muted d-block" style="font-size:11px;">TỔNG SỐ LƯỢNG</small><strong>${lData.total}</strong></div></div>
+                </div>
+                <h6 class="fw-bold text-primary mb-2"><i class="fa-solid fa-users-gear me-2"></i>Hiệu quả chi tiết theo nhân sự:</h6>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped align-middle small mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>STT</th>
+                                <th>Nhân viên</th>
+                                <th class="text-center">Chưa kiểm tra</th>
+                                <th class="text-center">Chưa xử lý</th>
+                                <th class="text-center">Đã hoàn thành</th>
+                                <th class="text-center">Tổng số lượng</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            sortedEmployees.forEach((emp, idx) => {
+                let empData = lData.employees[emp];
+                bodyHtml += `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td class="fw-bold text-dark"><i class="fa-solid fa-user me-1 text-muted"></i>${emp}</td>
+                        <td class="text-center"><span class="badge bg-primary-subtle text-primary">${empData.chuaKiemTra}</span></td>
+                        <td class="text-center"><span class="badge bg-warning-subtle text-warning-emphasis">${empData.chuaXuLy}</span></td>
+                        <td class="text-center"><span class="badge bg-success-subtle text-success">${empData.hoanThanh}</span></td>
+                        <td class="text-center fw-bold">${empData.total}</td>
+                    </tr>
+                `;
+            });
+
+            bodyHtml += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            document.getElementById('modal-leader-body').innerHTML = bodyHtml;
+
+            let myModal = new bootstrap.Modal(document.getElementById('leaderDetailModal'));
+            myModal.show();
+        }
+
+        window.onload = function() {
+            fetchSheetData();
+        };
+    </script>
 </body>
 </html>
