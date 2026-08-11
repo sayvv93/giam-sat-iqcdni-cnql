@@ -21,7 +21,7 @@
             white-space: nowrap;
             border-radius: 8px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
         .marquee-text {
             display: inline-block;
@@ -39,6 +39,30 @@
         @keyframes marquee {
             0% { transform: translate(0, 0); }
             100% { transform: translate(-100%, 0); }
+        }
+
+        /* Banner hướng dẫn khắc phục ảnh lỗi */
+        .fix-notice-banner {
+            background: #fffbeb;
+            border: 1px solid #fef3c7;
+            border-left: 4px solid #f59e0b;
+            color: #b45309;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+        .fix-notice-banner a {
+            color: #2563eb;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .fix-notice-banner a:hover {
+            text-decoration: underline;
         }
 
         .card-stat { background: #fff; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
@@ -127,6 +151,16 @@
             <div class="marquee-text">
                 <i class="fa-solid fa-shield-halved me-2"></i> HỆ THỐNG GIÁM SÁT & QUẢN LÝ HỢP ĐỒNG CHI NHÁNH DNI <i class="fa-solid fa-chart-line ms-4 me-2"></i> CHÀO MỪNG BẠN ĐẾN VỚI HỆ THỐNG QUẢN LÝ TẬP TRUNG
             </div>
+        </div>
+
+        <!-- THÔNG BÁO KHẮC PHỤC ẢNH LỖI KTV -->
+        <div class="fix-notice-banner">
+            <div>
+                <i class="fa-solid fa-triangle-exclamation me-2"></i>
+                <span>Ảnh lỗi KTV khắc phục lại tại:</span>
+                <a href="https://uploadiqc.fteldni.com" target="_blank" class="ms-1">uploadiqc.fteldni.com <i class="fa-solid fa-arrow-up-right-from-square small"></i></a>
+            </div>
+            <span class="small text-muted fst-italic">Hệ thống hỗ trợ KTV xử lý ảnh hợp đồng</span>
         </div>
 
         <div id="alert-container"></div>
