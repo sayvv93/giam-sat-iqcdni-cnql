@@ -742,25 +742,35 @@
             let rows = getFilteredRows();
 
             let leaderStats = {};
-            let partnerRawStats = {};
+            let partnerRawStats = { "BHA1": {total: 0, completed: 0}, "BHA2": {total: 0, completed: 0}, "DNI02": {total: 0, completed: 0}, "DNI03": {total: 0, completed: 0}, "DNI04": {total: 0, completed: 0}, "DNI05": {total: 0, completed: 0} };
             let staffMap = {};
 
             rows.forEach(r => {
                 let v = r.values;
                 let leader = v[COL.DOITRUONG] ? String(v[COL.DOITRUONG]).trim() : "Khác";
-                let partner = v[COL.DOITAC] ? String(v[COL.DOITAC]).trim() : "Khác";
+                let rawPartner = v[COL.DOITAC] ? String(v[COL.DOITAC]).trim() : "";
                 let staff = v[COL.NHANVIEN] ? String(v[COL.NHANVIEN]).trim() : "Chưa xác định";
 
                 if (!leaderStats[leader]) leaderStats[leader] = { total: 0, completed: 0 };
                 leaderStats[leader].total++;
                 if (getRecordStatus(v) === "HOAN_THANH") leaderStats[leader].completed++;
 
-                if (!partnerRawStats[partner]) partnerRawStats[partner] = { total: 0, completed: 0 };
-                partnerRawStats[partner].total++;
-                if (getRecordStatus(v) === "HOAN_THANH") partnerRawStats[partner].completed++;
+                // Phân loại và gom nhóm theo tên rút gọn chuẩn
+                let shortPartner = "Khác";
+                if (rawPartner.includes("BHA1")) shortPartner = "BHA1";
+                else if (rawPartner.includes("BHA2")) shortPartner = "BHA2";
+                else if (rawPartner.includes("DNI-02") || rawPartner.includes("DNI02")) shortPartner = "DNI02";
+                else if (rawPartner.includes("DNI-03") || rawPartner.includes("DNI03")) shortPartner = "DNI03";
+                else if (rawPartner.includes("DNI-04") || rawPartner.includes("DNI04")) shortPartner = "DNI04";
+                else if (rawPartner.includes("DNI-05") || rawPartner.includes("DNI05")) shortPartner = "DNI05";
+
+                if (partnerRawStats[shortPartner]) {
+                    partnerRawStats[shortPartner].total++;
+                    if (getRecordStatus(v) === "HOAN_THANH") partnerRawStats[shortPartner].completed++;
+                }
 
                 if (!staffMap[staff]) {
-                    staffMap[staff] = { staff, leader, partner, total: 0, completed: 0, pending: 0, uncheck: 0 };
+                    staffMap[staff] = { staff, leader, partner: rawPartner, total: 0, completed: 0, pending: 0, uncheck: 0 };
                 }
                 let st = staffMap[staff];
                 st.total++;
@@ -783,7 +793,7 @@
                     labels: leaderLabels,
                     datasets: [
                         { label: 'Hoàn thành', data: leaderCompletedData, backgroundColor: '#10b981', borderRadius: 4 },
-                        { label: 'Tổng hồ sơ', data: leaderTotalData, backgroundColor: '#cbd5e1', borderRadius: 4 }
+                        { label: 'Tổng triển khai', data: leaderTotalData, backgroundColor: '#cbd5e1', borderRadius: 4 }
                     ]
                 },
                 options: { 
@@ -791,39 +801,25 @@
                     maintainAspectRatio: false, 
                     plugins: { 
                         legend: { position: 'bottom' },
-                        datalabels: { display: false } // Không hiện số trên biểu đồ Đội Trưởng để giữ sạch giao diện
+                        datalabels: { display: false }
                     } 
                 }
             });
 
-            // 2. Biểu đồ Đối Tác (Sắp xếp theo đúng thứ tự yêu cầu & hiển thị % hoàn thành trên cột)
-            const fixedPartnerOrder = [
-                "Phuong Nam DNI-BHA1",
-                "Phuong Nam DNI-BHA2",
-                "Phuong Nam DNI-02",
-                "Phuong Nam DNI-03",
-                "Phuong Nam DNI-04",
-                "Phuong Nam DNI-05"
-            ];
-
-            let partnerCompletedData = [];
-            let partnerTotalData = [];
-
-            fixedPartnerOrder.forEach(pName => {
-                let stats = partnerRawStats[pName] || { total: 0, completed: 0 };
-                partnerCompletedData.push(stats.completed);
-                partnerTotalData.push(stats.total);
-            });
+            // 2. Biểu đồ Đối Tác (Cố định thứ tự rút gọn: BHA1, BHA2, DNI02, DNI03, DNI04, DNI05)
+            const fixedPartnerLabels = ["BHA1", "BHA2", "DNI02", "DNI03", "DNI04", "DNI05"];
+            let partnerCompletedData = fixedPartnerLabels.map(key => partnerRawStats[key].completed);
+            let partnerTotalData = fixedPartnerLabels.map(key => partnerRawStats[key].total);
 
             if (partnerChartInstance) partnerChartInstance.destroy();
             let ctxPartner = document.getElementById('partnerChart').getContext('2d');
             partnerChartInstance = new Chart(ctxPartner, {
                 type: 'bar',
                 data: {
-                    labels: fixedPartnerOrder,
+                    labels: fixedPartnerLabels,
                     datasets: [
                         { label: 'Hoàn thành', data: partnerCompletedData, backgroundColor: '#10b981', borderRadius: 4 },
-                        { label: 'Tổng hồ sơ', data: partnerTotalData, backgroundColor: '#cbd5e1', borderRadius: 4 }
+                        { label: 'Tổng triển khai', data: partnerTotalData, backgroundColor: '#cbd5e1', borderRadius: 4 }
                     ]
                 },
                 options: { 
@@ -835,11 +831,8 @@
                             anchor: 'end',
                             align: 'top',
                             formatter: (value, context) => {
-                                // Chỉ tính % hoàn thành dựa trên cột "Hoàn thành" so với "Tổng hồ sơ" của cùng cột đó
                                 let datasetIndex = context.datasetIndex;
                                 let dataIndex = context.dataIndex;
-                                
-                                // Nếu là dataset "Hoàn thành" (index 0)
                                 if (datasetIndex === 0) {
                                     let completedVal = partnerCompletedData[dataIndex];
                                     let totalVal = partnerTotalData[dataIndex];
@@ -847,7 +840,7 @@
                                     let pct = Math.round((completedVal / totalVal) * 100);
                                     return pct + '%';
                                 }
-                                return ''; // Không hiển thị label trên cột Tổng hồ sơ để tránh rối mắt
+                                return '';
                             },
                             font: {
                                 weight: 'bold',
