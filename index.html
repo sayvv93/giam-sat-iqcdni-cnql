@@ -6,8 +6,9 @@
     <title>Hệ Thống Giám Sát & Quản Lý Hợp Đồng IQC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Thư viện biểu đồ Chart.js -->
+    <!-- Thư viện biểu đồ Chart.js & plugin hiển thị label trên cột -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <style>
         body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .container-fluid { max-width: 1700px; padding: 20px; }
@@ -141,7 +142,7 @@
             visibility: visible;
             opacity: 1;
         }
-        .chart-container { position: relative; height: 320px; width: 100%; background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .chart-container { position: relative; height: 340px; width: 100%; background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -292,7 +293,7 @@
                 </div>
                 <div class="col-lg-6">
                     <div class="chart-container">
-                        <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-chart-pie text-success me-2"></i>Tỷ trọng khối lượng theo Đối Tác</h6>
+                        <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-chart-column text-success me-2"></i>Tỷ trọng khối lượng theo Đối Tác</h6>
                         <canvas id="partnerChart"></canvas>
                     </div>
                 </div>
@@ -329,6 +330,9 @@
         let leaderChartInstance = null;
         let partnerChartInstance = null;
         const COL = { VUNG: 0, DOITAC: 1, DOITRUONG: 2, BLOCK: 3, NHANVIEN: 4, HOPDONG: 5, NGAY_PTC: 6, CHECK: 7, HUONG_XY: 8 };
+
+        // Đăng ký plugin hiển thị label trên biểu đồ Chart.js
+        Chart.register(ChartDataLabels);
 
         function switchTab(tabName) {
             document.querySelectorAll('.tab-content-section').forEach(el => el.classList.remove('active'));
@@ -738,7 +742,7 @@
             let rows = getFilteredRows();
 
             let leaderStats = {};
-            let partnerStats = {};
+            let partnerRawStats = {};
             let staffMap = {};
 
             rows.forEach(r => {
@@ -751,8 +755,9 @@
                 leaderStats[leader].total++;
                 if (getRecordStatus(v) === "HOAN_THANH") leaderStats[leader].completed++;
 
-                if (!partnerStats[partner]) partnerStats[partner] = 0;
-                partnerStats[partner]++;
+                if (!partnerRawStats[partner]) partnerRawStats[partner] = { total: 0, completed: 0 };
+                partnerRawStats[partner].total++;
+                if (getRecordStatus(v) === "HOAN_THANH") partnerRawStats[partner].completed++;
 
                 if (!staffMap[staff]) {
                     staffMap[staff] = { staff, leader, partner, total: 0, completed: 0, pending: 0, uncheck: 0 };
@@ -765,6 +770,7 @@
                 else st.uncheck++;
             });
 
+            // 1. Biểu đồ Đội Trưởng
             let leaderLabels = Object.keys(leaderStats);
             let leaderCompletedData = leaderLabels.map(l => leaderStats[l].completed);
             let leaderTotalData = leaderLabels.map(l => leaderStats[l].total);
@@ -780,26 +786,80 @@
                         { label: 'Tổng hồ sơ', data: leaderTotalData, backgroundColor: '#cbd5e1', borderRadius: 4 }
                     ]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { position: 'bottom' },
+                        datalabels: { display: false } // Không hiện số trên biểu đồ Đội Trưởng để giữ sạch giao diện
+                    } 
+                }
             });
 
-            let partnerLabels = Object.keys(partnerStats);
-            let partnerDataValues = partnerLabels.map(p => partnerStats[p]);
+            // 2. Biểu đồ Đối Tác (Sắp xếp theo đúng thứ tự yêu cầu & hiển thị % hoàn thành trên cột)
+            const fixedPartnerOrder = [
+                "Phuong Nam DNI-BHA1",
+                "Phuong Nam DNI-BHA2",
+                "Phuong Nam DNI-02",
+                "Phuong Nam DNI-03",
+                "Phuong Nam DNI-04",
+                "Phuong Nam DNI-05"
+            ];
+
+            let partnerCompletedData = [];
+            let partnerTotalData = [];
+
+            fixedPartnerOrder.forEach(pName => {
+                let stats = partnerRawStats[pName] || { total: 0, completed: 0 };
+                partnerCompletedData.push(stats.completed);
+                partnerTotalData.push(stats.total);
+            });
 
             if (partnerChartInstance) partnerChartInstance.destroy();
             let ctxPartner = document.getElementById('partnerChart').getContext('2d');
             partnerChartInstance = new Chart(ctxPartner, {
-                type: 'doughnut',
+                type: 'bar',
                 data: {
-                    labels: partnerLabels,
-                    datasets: [{
-                        data: partnerDataValues,
-                        backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
-                    }]
+                    labels: fixedPartnerOrder,
+                    datasets: [
+                        { label: 'Hoàn thành', data: partnerCompletedData, backgroundColor: '#10b981', borderRadius: 4 },
+                        { label: 'Tổng hồ sơ', data: partnerTotalData, backgroundColor: '#cbd5e1', borderRadius: 4 }
+                    ]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { position: 'bottom' },
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'top',
+                            formatter: (value, context) => {
+                                // Chỉ tính % hoàn thành dựa trên cột "Hoàn thành" so với "Tổng hồ sơ" của cùng cột đó
+                                let datasetIndex = context.datasetIndex;
+                                let dataIndex = context.dataIndex;
+                                
+                                // Nếu là dataset "Hoàn thành" (index 0)
+                                if (datasetIndex === 0) {
+                                    let completedVal = partnerCompletedData[dataIndex];
+                                    let totalVal = partnerTotalData[dataIndex];
+                                    if (!totalVal || totalVal === 0) return '0%';
+                                    let pct = Math.round((completedVal / totalVal) * 100);
+                                    return pct + '%';
+                                }
+                                return ''; // Không hiển thị label trên cột Tổng hồ sơ để tránh rối mắt
+                            },
+                            font: {
+                                weight: 'bold',
+                                size: 10
+                            },
+                            color: '#1e293b'
+                        }
+                    } 
+                }
             });
 
+            // 3. Hiệu suất nhân viên dạng thẻ E-commerce
             let staffContainer = document.getElementById('staff-cards-container');
             let staffArray = Object.values(staffMap);
 
