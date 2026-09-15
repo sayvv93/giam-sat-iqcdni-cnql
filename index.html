@@ -101,6 +101,16 @@
         .chart-container { width: 100%; background: #fff; padding: 16px 18px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .toast-stack { position: fixed; top: 16px; right: 16px; z-index: 1080; width: min(380px, calc(100vw - 32px)); pointer-events: none; }
         .toast-stack .alert { box-shadow: 0 8px 24px rgba(15,23,42,.18); border: 0; pointer-events: auto; margin-bottom: 0; }
+        .err-group { border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 10px; overflow: hidden; height: 100%; }
+        .err-group-head { padding: 10px 14px; font-weight: 700; font-size: .88rem; display: flex; justify-content: space-between; align-items: center; color: #fff; }
+        .err-group-body { max-height: 340px; overflow-y: auto; background: #fff; }
+        .err-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 14px; border-bottom: 1px solid #f1f5f9; font-size: .82rem; cursor: help; }
+        .err-row:last-child { border-bottom: 0; }
+        .err-row:hover { background: #f8fafc; }
+        .err-name { min-width: 0; }
+        .err-name b { display: block; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .err-name span { color: #94a3b8; font-size: .73rem; }
+        .err-count { flex: none; font-weight: 700; border-radius: 20px; padding: 1px 10px; font-size: .75rem; }
         .phone-mask { filter: blur(3.5px); transition: filter .15s ease; cursor: pointer; }
         .phone-mask:hover, .phone-mask:focus { filter: none; }
         .note-cell { max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #475569; cursor: help; }
@@ -287,6 +297,15 @@
                 </div>
             </div>
 
+            <!-- Report nhóm lỗi -->
+            <div class="report-table-card">
+                <h6 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-layer-group text-warning me-2"></i>Report nhóm lỗi theo nhân viên
+                    <span class="fw-normal text-muted small ms-2">Xếp theo số lượng giảm dần, rê chuột vào tên để xem số hợp đồng</span>
+                </h6>
+                <div class="row g-3" id="error-groups"></div>
+            </div>
+
             <!-- Bảng Thống Kê Chi Tiết Theo Đội Trưởng -->
             <div class="report-table-card">
                 <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-table-list text-primary me-2"></i>Bảng thống kê chi tiết theo Đội Trưởng</h6>
@@ -380,7 +399,7 @@
              'section-iqc', 'section-report', 'btn-tab-iqc', 'btn-tab-report',
              'report-table-leader-body', 'report-table-partner-body', 'staff-cards-container',
              'leaderChart', 'partnerChart', 'modal-staff-title', 'modal-staff-body',
-             'staffDetailModal', 'select-all', 'search-hopdong', 'search-row', 'table-title', 'view-switch'
+             'staffDetailModal', 'select-all', 'search-hopdong', 'search-row', 'table-title', 'view-switch', 'error-groups'
             ].forEach(id => { el[id] = document.getElementById(id); });
             FILTER_IDS.forEach(k => { el[k] = document.getElementById('global-filter-' + k); });
         }
@@ -1060,9 +1079,17 @@
         }
 
         // Dùng chung cho cả vẽ report và xuất Excel
+        // Ba nhóm kết quả check cần tách riêng để soi theo nhân viên
+        const ERR_GROUPS = [
+            { key: 'chuan', label: 'IQC & Đầu vào chuẩn', head: '#16a34a', badge: 'background:#dcfce7;color:#15803d;', test: d => d.isChuan },
+            { key: 'iqc', label: 'IQC chưa đạt', head: '#dc2626', badge: 'background:#fee2e2;color:#b91c1c;', test: d => d.isIqcChuaDat },
+            { key: 'dauvao', label: 'Đầu vào chưa đạt', head: '#d97706', badge: 'background:#fef3c7;color:#b45309;', test: d => d.isDauVaoChuaDat }
+        ];
+
         function computeStats() {
             const rows = getFilteredRows();
             const leaderMap = new Map(), partnerMap = new Map(), staffMap = new Map();
+            const errMaps = ERR_GROUPS.map(() => new Map());
 
             for (let i = 0; i < rows.length; i++) {
                 const d = rows[i]._;
@@ -1081,11 +1108,20 @@
                 o = staffMap.get(staff);
                 if (!o) { o = blankStat({ name: staff, leader: leader, partner: partner }); staffMap.set(staff, o); }
                 bump(o, d);
+
+                for (let g = 0; g < ERR_GROUPS.length; g++) {
+                    if (!ERR_GROUPS[g].test(d)) continue;
+                    const mp = errMaps[g];
+                    let e = mp.get(staff);
+                    if (!e) { e = { name: staff, leader: leader, contracts: [] }; mp.set(staff, e); }
+                    e.contracts.push(d.hopdong);
+                }
             }
 
             const byTotalDesc = (a, b) => b.total - a.total;
             return {
                 rows: rows,
+                errGroups: errMaps.map(mp => [...mp.values()].sort((a, b) => b.contracts.length - a.contracts.length)),
                 lArr: [...leaderMap.values()],
                 pArr: [...partnerMap.values()],
                 staffArr: [...staffMap.values()].sort(byTotalDesc)
@@ -1106,6 +1142,8 @@
                 statRows([...lArr].sort(byTotal)) || '<tr><td colspan="9" class="text-muted">Không có dữ liệu</td></tr>';
             el['report-table-partner-body'].innerHTML =
                 statRows([...pArr].sort(byTotal)) || '<tr><td colspan="9" class="text-muted">Không có dữ liệu</td></tr>';
+
+            renderErrorGroups(st.errGroups);
 
             if (staffArr.length === 0) {
                 el['staff-cards-container'].innerHTML = '<div class="col-12 text-center text-muted py-4">Không có dữ liệu nhân viên phù hợp.</div>';
@@ -1250,6 +1288,49 @@
                 btn.disabled = false;
                 btn.innerHTML = label;
             }
+        }
+
+        function renderErrorGroups(groups) {
+            const cols = new Array(ERR_GROUPS.length);
+
+            for (let g = 0; g < ERR_GROUPS.length; g++) {
+                const cfg = ERR_GROUPS[g], list = groups[g];
+                const total = list.reduce((a, e) => a + e.contracts.length, 0);
+
+                let body;
+                if (list.length === 0) {
+                    body = '<div class="text-center text-muted small py-4">Không có dữ liệu</div>';
+                } else {
+                    const rowsHtml = new Array(list.length);
+                    for (let i = 0; i < list.length; i++) {
+                        const e = list[i];
+                        // Tooltip liệt kê số hợp đồng, cắt bớt nếu quá dài kẻo tràn màn hình
+                        const show = e.contracts.slice(0, 40);
+                        let tip = `${e.name} - ${cfg.label} (${e.contracts.length} hợp đồng)\n${show.join(', ')}`;
+                        if (e.contracts.length > show.length) tip += `\n... và ${e.contracts.length - show.length} hợp đồng nữa`;
+
+                        rowsHtml[i] =
+                            `<div class="err-row" title="${esc(tip)}">
+                                <div class="err-name"><b>${esc(e.name)}</b><span>${esc(e.leader)}</span></div>
+                                <span class="err-count" style="${cfg.badge}">${e.contracts.length}</span>
+                            </div>`;
+                    }
+                    body = rowsHtml.join('');
+                }
+
+                cols[g] =
+                    `<div class="col-lg-4">
+                        <div class="err-group">
+                            <div class="err-group-head" style="background:${cfg.head}">
+                                <span>${cfg.label}</span>
+                                <span>${total} HĐ / ${list.length} NV</span>
+                            </div>
+                            <div class="err-group-body">${body}</div>
+                        </div>
+                    </div>`;
+            }
+
+            el['error-groups'].innerHTML = cols.join('');
         }
 
         function showStaffDetailModal(staffName) {
