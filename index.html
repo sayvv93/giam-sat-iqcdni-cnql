@@ -176,38 +176,32 @@
                 <span class="fw-bold text-dark"><i class="fa-solid fa-filter me-2 text-primary"></i>Bộ lọc phân cấp dữ liệu</span>
                 <div>
                     <button class="btn btn-outline-primary btn-sm me-2 fw-bold" onclick="fetchSheetData()"><i class="fa-solid fa-sync me-1"></i> Tải lại dữ liệu mới</button>
-                    <button class="btn btn-outline-danger btn-sm fw-bold" onclick="resetAllFilters()"><i class="fa-solid fa-rotate-left me-1"></i> Reset bộ lọc</button>
+                    <button class="btn btn-outline-danger btn-sm me-2 fw-bold" onclick="resetAllFilters()"><i class="fa-solid fa-rotate-left me-1"></i> Reset bộ lọc</button>
+                    <button class="btn btn-success btn-sm fw-bold" id="btn-export-excel" onclick="exportExcel()"><i class="fa-solid fa-file-excel me-1"></i> Xuất Excel</button>
                 </div>
             </div>
             <div class="row g-3">
                 <div class="col-md-2">
-                    <label class="form-label fw-bold small text-muted">1. Tháng</label>
-                    <select id="global-filter-thang" class="form-select form-select-sm" onchange="onGlobalFilterChange('thang')"><option value="">Tất cả</option></select>
+                    <select id="global-filter-thang" class="form-select form-select-sm" onchange="onGlobalFilterChange('thang')"><option value="">Tất cả tháng</option></select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label fw-bold small text-muted">2. Vùng (A)</label>
-                    <select id="global-filter-vung" class="form-select form-select-sm" onchange="onGlobalFilterChange('vung')"><option value="">Tất cả</option></select>
+                    <select id="global-filter-vung" class="form-select form-select-sm" onchange="onGlobalFilterChange('vung')"><option value="">Tất cả vùng</option></select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label fw-bold small text-muted">3. Đối tác quản lý (B)</label>
-                    <select id="global-filter-doitac" class="form-select form-select-sm" onchange="onGlobalFilterChange('doitac')"><option value="">Tất cả</option></select>
+                    <select id="global-filter-doitac" class="form-select form-select-sm" onchange="onGlobalFilterChange('doitac')"><option value="">Tất cả đối tác</option></select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label fw-bold small text-muted">4. Đội trưởng (C)</label>
-                    <select id="global-filter-doitruong" class="form-select form-select-sm" onchange="onGlobalFilterChange('doitruong')"><option value="">Tất cả</option></select>
+                    <select id="global-filter-doitruong" class="form-select form-select-sm" onchange="onGlobalFilterChange('doitruong')"><option value="">Tất cả đội trưởng</option></select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label fw-bold small text-muted">5. Block quản lý (D)</label>
-                    <select id="global-filter-block" class="form-select form-select-sm" onchange="onGlobalFilterChange('block')"><option value="">Tất cả</option></select>
+                    <select id="global-filter-block" class="form-select form-select-sm" onchange="onGlobalFilterChange('block')"><option value="">Tất cả block</option></select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label fw-bold small text-muted">6. Nhân viên (E)</label>
-                    <select id="global-filter-nhanvien" class="form-select form-select-sm" onchange="onGlobalFilterChange('nhanvien')"><option value="">-- Tất cả --</option></select>
+                    <select id="global-filter-nhanvien" class="form-select form-select-sm" onchange="onGlobalFilterChange('nhanvien')"><option value="">Tất cả nhân viên</option></select>
                 </div>
             </div>
             <div class="row g-3 mt-1 pt-3 border-top" id="search-row" style="display: none;">
                 <div class="col-md-4">
-                    <label class="form-label fw-bold small text-muted">7. Tìm số hợp đồng</label>
                     <div class="search-box">
                         <i class="fa-solid fa-magnifying-glass"></i>
                         <input type="search" id="search-hopdong" class="form-control form-control-sm"
@@ -559,12 +553,12 @@
             }
 
             const cmp = (a, b) => a.localeCompare(b, 'vi');
-            fillSelect('thang', [...S.thang].sort(cmp), f.thang, 'Tất cả');
-            fillSelect('vung', [...S.vung].sort(cmp), f.vung, 'Tất cả');
-            fillSelect('doitac', [...S.doitac].sort(cmp), f.doitac, 'Tất cả');
-            fillSelect('doitruong', [...S.doitruong].sort(cmp), f.doitruong, 'Tất cả');
-            fillSelect('block', [...S.block].sort(cmp), f.block, 'Tất cả');
-            fillSelect('nhanvien', [...S.nhanvien].sort(cmp), f.nhanvien, '-- Tất cả --');
+            fillSelect('thang', [...S.thang].sort(cmp), f.thang, 'Tất cả tháng');
+            fillSelect('vung', [...S.vung].sort(cmp), f.vung, 'Tất cả vùng');
+            fillSelect('doitac', [...S.doitac].sort(cmp), f.doitac, 'Tất cả đối tác');
+            fillSelect('doitruong', [...S.doitruong].sort(cmp), f.doitruong, 'Tất cả đội trưởng');
+            fillSelect('block', [...S.block].sort(cmp), f.block, 'Tất cả block');
+            fillSelect('nhanvien', [...S.nhanvien].sort(cmp), f.nhanvien, 'Tất cả nhân viên');
         }
 
         function fillSelect(key, arr, currentVal, defaultText) {
@@ -977,7 +971,8 @@
             return html;
         }
 
-        function renderReportContent() {
+        // Dùng chung cho cả vẽ report và xuất Excel
+        function computeStats() {
             const rows = getFilteredRows();
             const leaderMap = new Map(), partnerMap = new Map(), staffMap = new Map();
 
@@ -1000,8 +995,18 @@
                 bump(o, d);
             }
 
-            const lArr = [...leaderMap.values()];
-            const pArr = [...partnerMap.values()];
+            const byTotalDesc = (a, b) => b.total - a.total;
+            return {
+                rows: rows,
+                lArr: [...leaderMap.values()],
+                pArr: [...partnerMap.values()],
+                staffArr: [...staffMap.values()].sort(byTotalDesc)
+            };
+        }
+
+        function renderReportContent() {
+            const st = computeStats();
+            const lArr = st.lArr, pArr = st.pArr, staffArr = st.staffArr;
 
             // Xếp hạng theo tỷ lệ hoàn thành, biểu đồ đọc được như một bảng xếp hạng
             const byPct = (a, b) => (b.total ? b.completed / b.total : 0) - (a.total ? a.completed / a.total : 0);
@@ -1014,7 +1019,6 @@
             el['report-table-partner-body'].innerHTML =
                 statRows([...pArr].sort(byTotal)) || '<tr><td colspan="9" class="text-muted">Không có dữ liệu</td></tr>';
 
-            const staffArr = [...staffMap.values()].sort(byTotal);
             if (staffArr.length === 0) {
                 el['staff-cards-container'].innerHTML = '<div class="col-12 text-center text-muted py-4">Không có dữ liệu nhân viên phù hợp.</div>';
                 return;
@@ -1045,6 +1049,118 @@
                     </div>`;
             }
             el['staff-cards-container'].innerHTML = cards.join('');
+        }
+
+        /* ---------- Xuất Excel ---------- */
+
+        let xlsxPromise = null;
+
+        // Thư viện ~400KB, chỉ tải khi thật sự bấm nút, không làm chậm lúc mở trang
+        function loadXLSX() {
+            if (window.XLSX) return Promise.resolve();
+            if (!xlsxPromise) {
+                xlsxPromise = new Promise((resolve, reject) => {
+                    const sc = document.createElement('script');
+                    sc.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+                    sc.onload = resolve;
+                    sc.onerror = () => { xlsxPromise = null; reject(new Error('Không tải được thư viện xuất Excel. Kiểm tra kết nối mạng.')); };
+                    document.head.appendChild(sc);
+                });
+            }
+            return xlsxPromise;
+        }
+
+        function pct(o) { return o.total > 0 ? Math.round((o.completed / o.total) * 100) : 0; }
+
+        const STAT_COLS = ['Tổng khối lượng', 'Chưa kiểm tra', 'IQC & Đầu vào chuẩn', 'IQC chưa đạt', 'Đầu vào chưa đạt', 'Đã hoàn thành', 'Tỷ lệ hoàn thành (%)'];
+
+        function statCells(o) {
+            return [o.total, o.chuaKiemTra, o.chuan, o.iqcChuaDat, o.dauVaoChuaDat, o.completed, pct(o)];
+        }
+
+        function stamp() {
+            const d = new Date(), p = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+        }
+
+        async function exportExcel() {
+            const btn = document.getElementById('btn-export-excel');
+            const st = computeStats();
+
+            if (st.rows.length === 0) {
+                showAlert('<div class="alert alert-warning py-2">⚠️ Không có dữ liệu để xuất. Hãy nới bộ lọc rồi thử lại.</div>', 4000);
+                return;
+            }
+
+            btn.disabled = true;
+            const label = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang tạo file...';
+
+            try {
+                await loadXLSX();
+
+                const f = readFilters();
+                const wb = XLSX.utils.book_new();
+                const add = (rows, name, widths) => {
+                    const ws = XLSX.utils.aoa_to_sheet(rows);
+                    ws['!cols'] = widths.map(w => ({ wch: w }));
+                    ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+                    XLSX.utils.book_append_sheet(wb, ws, name);
+                };
+
+                // Sheet 1: ghi lại bộ lọc đang áp dụng, để mở file ra còn biết số liệu thuộc phạm vi nào
+                add([
+                    ['BÁO CÁO GIÁM SÁT IQC - CHI NHÁNH DNI'],
+                    ['Thời điểm xuất', new Date().toLocaleString('vi-VN')],
+                    [],
+                    ['BỘ LỌC ĐANG ÁP DỤNG'],
+                    ['Tháng', f.thang || 'Tất cả'],
+                    ['Vùng', f.vung || 'Tất cả'],
+                    ['Đối tác quản lý', f.doitac || 'Tất cả'],
+                    ['Đội trưởng', f.doitruong || 'Tất cả'],
+                    ['Block quản lý', f.block || 'Tất cả'],
+                    ['Nhân viên', f.nhanvien || 'Tất cả'],
+                    [],
+                    ['TỔNG HỢP'],
+                    ['Tổng số lượng', st.rows.length],
+                    ['Chưa kiểm tra', Number(el['sum-chuakiemtra'].textContent)],
+                    ['Chưa xử lý', Number(el['sum-chuaxuly'].textContent)],
+                    ['Đã hoàn thành', Number(el['sum-hoanthanh'].textContent)]
+                ], 'Tổng hợp', [26, 34]);
+
+                const byTotal = (a, b) => b.total - a.total;
+
+                add([['STT', 'Đội trưởng', ...STAT_COLS]].concat(
+                    [...st.lArr].sort(byTotal).map((o, i) => [i + 1, o.name, ...statCells(o)])
+                ), 'Đội trưởng', [6, 26, 15, 14, 20, 14, 18, 14, 18]);
+
+                add([['STT', 'Đối tác', ...STAT_COLS]].concat(
+                    [...st.pArr].sort(byTotal).map((o, i) => [i + 1, o.name, ...statCells(o)])
+                ), 'Đối tác', [6, 20, 15, 14, 20, 14, 18, 14, 18]);
+
+                add([['STT', 'Nhân viên', 'Đội trưởng', 'Đối tác', ...STAT_COLS]].concat(
+                    st.staffArr.map((o, i) => [i + 1, o.name, o.leader, o.partner, ...statCells(o)])
+                ), 'Nhân viên', [6, 24, 24, 20, 15, 14, 20, 14, 18, 14, 18]);
+
+                // Sheet chi tiết từng hợp đồng
+                const detail = [['STT', 'Vùng', 'Đối tác', 'Đội trưởng', 'Block', 'Nhân viên', 'Số hợp đồng', 'Ngày PTC', 'Kết quả check', 'Hướng xử lý', 'Trạng thái']];
+                for (let i = 0; i < st.rows.length; i++) {
+                    const d = st.rows[i]._;
+                    detail.push([i + 1, d.vung, d.doitac, d.doitruong, d.block, d.nhanvien, d.hopdong, d.ngayFmt,
+                        d.check, d.xuLy,
+                        d.isCompleted ? 'Hoàn thành' : (d.isChuaKiemTra ? 'Chưa kiểm tra' : 'Chưa xử lý')]);
+                }
+                add(detail, 'Chi tiết hợp đồng', [6, 14, 18, 22, 14, 22, 16, 18, 24, 30, 15]);
+
+                XLSX.writeFile(wb, `BaoCao_IQC_DNI_${stamp()}.xlsx`);
+                showAlert(`<div class="alert alert-success py-2"><b>✅ Đã xuất file Excel.</b><div class="small mt-1">${st.rows.length} hợp đồng, 5 sheet. Kiểm tra thư mục Tải xuống.</div></div>`, 6000);
+
+            } catch (err) {
+                showAlert(`<div class="alert alert-danger py-2"><b>❌ Xuất Excel thất bại.</b><div class="small mt-1">${esc(err.message)}</div></div>`, 8000);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = label;
+            }
         }
 
         function showStaffDetailModal(staffName) {
@@ -1124,7 +1240,7 @@
         // Xuất hàm cho các nút onclick trong HTML
         Object.assign(window, {
             switchTab, fetchSheetData, resetAllFilters, onGlobalFilterChange,
-            filterData, bulkSubmit, toggleSelectAll
+            filterData, bulkSubmit, toggleSelectAll, exportExcel
         });
 
         if (document.readyState === 'loading') {
