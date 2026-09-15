@@ -219,10 +219,15 @@
         <div id="section-iqc" class="tab-content-section">
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
-                    <span class="fw-bold"><i class="fa-solid fa-list-check me-2"></i>Danh sách dữ liệu tồn đọng xử lý (Chọn tối đa 5 dòng)</span>
-                    <div>
-                        <button id="btn-bulk-submit" class="btn btn-sm btn-success me-2 fw-bold" onclick="bulkSubmit()"><i class="fa-solid fa-paper-plane me-1"></i> Gửi dữ liệu đã chọn</button>
-                        <label class="small me-1">Hiển thị:</label>
+                    <span class="fw-bold" id="table-title"><i class="fa-solid fa-list-check me-2"></i>Danh sách dữ liệu tồn đọng xử lý (Chọn tối đa 5 dòng)</span>
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        <div class="btn-group btn-group-sm" role="group" id="view-switch">
+                            <button type="button" class="btn btn-light active" data-view="tondong" onclick="setView('tondong')">Tồn đọng</button>
+                            <button type="button" class="btn btn-outline-light" data-view="dacheck" onclick="setView('dacheck')">Đã check</button>
+                            <button type="button" class="btn btn-outline-light" data-view="all" onclick="setView('all')">Tất cả</button>
+                        </div>
+                        <button id="btn-bulk-submit" class="btn btn-sm btn-success fw-bold" onclick="bulkSubmit()"><i class="fa-solid fa-paper-plane me-1"></i> Gửi dữ liệu đã chọn</button>
+                        <label class="small">Hiển thị:</label>
                         <select id="select-limit" class="form-select form-select-sm d-inline-block w-auto" onchange="filterData()">
                             <option value="50">50 dòng</option>
                             <option value="100">100 dòng</option>
@@ -365,6 +370,7 @@
         let leaderChart = null;
         let partnerChart = null;
         let alertTimer = null;
+        let viewMode = 'tondong';   // tondong | dacheck | all
 
         // Cache tham chiếu DOM một lần, thay vì getElementById lặp đi lặp lại
         const el = {};
@@ -374,7 +380,7 @@
              'section-iqc', 'section-report', 'btn-tab-iqc', 'btn-tab-report',
              'report-table-leader-body', 'report-table-partner-body', 'staff-cards-container',
              'leaderChart', 'partnerChart', 'modal-staff-title', 'modal-staff-body',
-             'staffDetailModal', 'select-all', 'search-hopdong', 'search-row'
+             'staffDetailModal', 'select-all', 'search-hopdong', 'search-row', 'table-title', 'view-switch'
             ].forEach(id => { el[id] = document.getElementById(id); });
             FILTER_IDS.forEach(k => { el[k] = document.getElementById('global-filter-' + k); });
         }
@@ -387,19 +393,53 @@
             return s == null ? '' : String(s).replace(/[&<>"']/g, c => ESC[c]);
         }
 
-        // Số điện thoại VN: bắt đầu bằng 0 hoặc 84, tổng 10 số, cho phép dấu cách/chấm/gạch
-        // Không dùng lookbehind để chạy được trên cả trình duyệt Safari đời cũ
-        const PHONE_RE = /(^|[^\d])((?:\+?84|0)(?:[\s.\-]?\d){9})(?!\d)/g;
+        /* Nhận diện số điện thoại trong ghi chú.
+           Bốn dạng viết, xếp từ cụ thể đến tổng quát. Không dùng lookbehind
+           để chạy được trên Safari đời cũ; ranh giới kiểm tra bằng tay bên dưới. */
+        const PHONE_RE = new RegExp([
+            '\\+?84[\\s.\\-]?\\d{3}[\\s.\\-]?\\d{3}[\\s.\\-]?\\d{3,4}',  // +84 / 84...
+            '0\\d{2,3}[\\s.\\-]\\d{3,4}[\\s.\\-]\\d{3,4}',               // 0913.456.789 / 0973 031 105
+            '0\\d{9,10}',                                                 // 0337377929 / 01663377929
+            '[35789]\\d{8}'                                               // 937031105 (viết thiếu số 0)
+        ].join('|'), 'g');
+
+        // Cắt ghi chú thành các đoạn [chữ thường, số điện thoại]
+        function noteParts(note) {
+            const parts = [];
+            let last = 0, m;
+            PHONE_RE.lastIndex = 0;
+            while ((m = PHONE_RE.exec(note)) !== null) {
+                const st = m.index, en = st + m[0].length;
+                const before = st > 0 ? note[st - 1] : '';
+                const after = en < note.length ? note[en] : '';
+                if (/[\d+]/.test(before) || /\d/.test(after)) continue;              // dính vào số khác
+                if (/[.,]/.test(before) && /\d/.test(note[st - 2] || '')) continue;  // phần thập phân của toạ độ
+                if (/[.,]/.test(after) && /\d/.test(note[en + 1] || '')) continue;
+                parts.push([note.slice(last, st), m[0]]);
+                last = en;
+            }
+            parts.push([note.slice(last), null]);
+            return parts;
+        }
 
         function noteHtml(note) {
             if (!note) return '<span class="text-muted">-</span>';
-            return esc(note).replace(PHONE_RE, (m, pre, num) =>
-                pre + `<span class="phone-mask" tabindex="0" title="Số điện thoại - rê chuột để xem">${num}</span>`);
+            let html = '';
+            for (const [plain, phone] of noteParts(note)) {
+                html += esc(plain);
+                if (phone) html += `<span class="phone-mask" tabindex="0" title="Số điện thoại - rê chuột để xem">${esc(phone)}</span>`;
+            }
+            return html;
         }
 
         // Tooltip của cả ô cũng phải giấu số, nếu không thì làm mờ vô nghĩa
         function noteTitle(note) {
-            return note.replace(PHONE_RE, '$1[số điện thoại]');
+            let out = '';
+            for (const [plain, phone] of noteParts(note)) {
+                out += plain;
+                if (phone) out += '[số điện thoại]';
+            }
+            return out;
         }
 
         function txt(v) {
@@ -609,6 +649,24 @@
             return out;
         }
 
+        const VIEW_TITLE = {
+            tondong: '<i class="fa-solid fa-list-check me-2"></i>Danh sách dữ liệu tồn đọng xử lý (Chọn tối đa 5 dòng)',
+            dacheck: '<i class="fa-solid fa-clipboard-check me-2"></i>Danh sách hợp đồng đã check (Chọn tối đa 5 dòng để sửa lại)',
+            all: '<i class="fa-solid fa-layer-group me-2"></i>Toàn bộ hợp đồng trong phạm vi lọc (Chọn tối đa 5 dòng)'
+        };
+
+        function setView(mode) {
+            viewMode = mode;
+            for (const b of el['view-switch'].querySelectorAll('button')) {
+                const on = b.dataset.view === mode;
+                b.classList.toggle('active', on);
+                b.classList.toggle('btn-light', on);
+                b.classList.toggle('btn-outline-light', !on);
+            }
+            el['table-title'].innerHTML = VIEW_TITLE[mode];
+            filterData();
+        }
+
         function onGlobalFilterChange(level) {
             // Xoá các cấp lọc thấp hơn
             const idx = FILTER_IDS.indexOf(level);
@@ -659,11 +717,13 @@
             const q = searchTerm();
 
             let chuaKiemTra = 0, chuaXuLy = 0, hoanthanh = 0;
-            const tonDong = [];
+            const tonDong = [];   // chưa hoàn thành: chưa kiểm tra + chưa xử lý
+            const daCheck = [];   // đã có kết quả check, dù đã xong hay chưa
 
-            // Một lượt duy nhất: vừa đếm, vừa gom dòng tồn đọng
+            // Một lượt duy nhất: vừa đếm, vừa gom các nhóm hiển thị
             for (let i = 0; i < rows.length; i++) {
                 const d = rows[i]._;
+                if (!d.isChuaKiemTra) daCheck.push(rows[i]);
                 if (d.isCompleted) { hoanthanh++; continue; }
                 tonDong.push(rows[i]);
                 if (d.isChuaKiemTra) chuaKiemTra++;
@@ -701,11 +761,19 @@
                 return;
             }
 
+            const pool = viewMode === 'dacheck' ? daCheck : (viewMode === 'all' ? rows : tonDong);
+
+            const note = viewMode === 'dacheck'
+                ? `Đang xem <b>${daCheck.length}</b> hợp đồng đã có kết quả check. Chọn tối đa <b>5 dòng</b> nếu cần sửa lại kết quả.`
+                : (viewMode === 'all'
+                    ? `Đang xem toàn bộ <b>${rows.length}</b> hợp đồng trong phạm vi lọc.`
+                    : 'Đã kích hoạt sum dữ liệu theo toàn bộ bộ lọc. Bạn có thể tích chọn <b>tối đa 5 dòng</b> và nhấn "Gửi dữ liệu đã chọn".');
+
             el['filter-warning-container'].innerHTML =
-                '<div class="alert alert-success py-1 mb-0 small fw-bold"><i class="fa-solid fa-circle-check me-1"></i> Đã kích hoạt sum dữ liệu theo toàn bộ bộ lọc. Bạn có thể tích chọn <b>tối đa 5 dòng</b> và nhấn "Gửi dữ liệu đã chọn".</div>';
+                `<div class="alert alert-success py-1 mb-0 small fw-bold"><i class="fa-solid fa-circle-check me-1"></i> ${note}</div>`;
 
             const limit = el['select-limit'].value;
-            renderTable(limit === 'all' ? tonDong : tonDong.slice(0, parseInt(limit, 10)));
+            renderTable(limit === 'all' ? pool : pool.slice(0, parseInt(limit, 10)));
         }
 
         function renderTable(rows) {
@@ -1261,7 +1329,7 @@
         // Xuất hàm cho các nút onclick trong HTML
         Object.assign(window, {
             switchTab, fetchSheetData, resetAllFilters, onGlobalFilterChange,
-            filterData, bulkSubmit, toggleSelectAll, exportExcel
+            filterData, bulkSubmit, toggleSelectAll, exportExcel, setView
         });
 
         if (document.readyState === 'loading') {
