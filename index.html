@@ -101,6 +101,9 @@
         .chart-container { width: 100%; background: #fff; padding: 16px 18px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .toast-stack { position: fixed; top: 16px; right: 16px; z-index: 1080; width: min(380px, calc(100vw - 32px)); pointer-events: none; }
         .toast-stack .alert { box-shadow: 0 8px 24px rgba(15,23,42,.18); border: 0; pointer-events: auto; margin-bottom: 0; }
+        .phone-mask { filter: blur(3.5px); transition: filter .15s ease; cursor: pointer; }
+        .phone-mask:hover, .phone-mask:focus { filter: none; }
+        .note-cell { max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #475569; cursor: help; }
         .search-box { position: relative; }
         .search-box .fa-magnifying-glass { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: .8rem; }
         .search-box input { padding-left: 30px; }
@@ -181,22 +184,23 @@
                 </div>
             </div>
             <div class="row g-3">
-                <div class="col-md-2">
+                <div class="col-md">
                     <select id="global-filter-thang" class="form-select form-select-sm" onchange="onGlobalFilterChange('thang')"><option value="">Tất cả tháng</option></select>
                 </div>
-                <div class="col-md-2">
+                <!-- Ô lọc Vùng ẩn khỏi giao diện nhưng vẫn giữ trong DOM để logic lọc phân cấp chạy bình thường -->
+                <div class="col-md d-none">
                     <select id="global-filter-vung" class="form-select form-select-sm" onchange="onGlobalFilterChange('vung')"><option value="">Tất cả vùng</option></select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md">
                     <select id="global-filter-doitac" class="form-select form-select-sm" onchange="onGlobalFilterChange('doitac')"><option value="">Tất cả đối tác</option></select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md">
                     <select id="global-filter-doitruong" class="form-select form-select-sm" onchange="onGlobalFilterChange('doitruong')"><option value="">Tất cả đội trưởng</option></select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md">
                     <select id="global-filter-block" class="form-select form-select-sm" onchange="onGlobalFilterChange('block')"><option value="">Tất cả block</option></select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md">
                     <select id="global-filter-nhanvien" class="form-select form-select-sm" onchange="onGlobalFilterChange('nhanvien')"><option value="">Tất cả nhân viên</option></select>
                 </div>
             </div>
@@ -234,13 +238,13 @@
                                 <tr>
                                     <th style="width: 40px;"><input type="checkbox" id="select-all" onclick="toggleSelectAll(this)"></th>
                                     <th style="width: 50px;">STT</th>
-                                    <th>Vùng</th>
                                     <th>Đối tác</th>
                                     <th>Đội trưởng</th>
                                     <th>Block</th>
                                     <th>Nhân viên</th>
                                     <th>Số hợp đồng</th>
                                     <th>Ngày PTC</th>
+                                    <th style="width: 260px;">Ghi chú (J)</th>
                                     <th style="width: 200px;">Kết quả Check (H)</th>
                                     <th style="width: 250px;">Hướng xử lý chưa đạt chuẩn (I)</th>
                                 </tr>
@@ -353,7 +357,7 @@
         "use strict";
 
         const WEB_APP_URL = "https://iqc-cache-worker.sayvv93.workers.dev/";
-        const COL = { VUNG: 0, DOITAC: 1, DOITRUONG: 2, BLOCK: 3, NHANVIEN: 4, HOPDONG: 5, NGAY_PTC: 6, CHECK: 7, HUONG_XY: 8 };
+        const COL = { VUNG: 0, DOITAC: 1, DOITRUONG: 2, BLOCK: 3, NHANVIEN: 4, HOPDONG: 5, NGAY_PTC: 6, CHECK: 7, HUONG_XY: 8, GHICHU: 9 };
         const CACHE_NAME = 'iqc_sheet_data';
         const FILTER_IDS = ['thang', 'vung', 'doitac', 'doitruong', 'block', 'nhanvien'];
 
@@ -381,6 +385,21 @@
         const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
         function esc(s) {
             return s == null ? '' : String(s).replace(/[&<>"']/g, c => ESC[c]);
+        }
+
+        // Số điện thoại VN: bắt đầu bằng 0 hoặc 84, tổng 10 số, cho phép dấu cách/chấm/gạch
+        // Không dùng lookbehind để chạy được trên cả trình duyệt Safari đời cũ
+        const PHONE_RE = /(^|[^\d])((?:\+?84|0)(?:[\s.\-]?\d){9})(?!\d)/g;
+
+        function noteHtml(note) {
+            if (!note) return '<span class="text-muted">-</span>';
+            return esc(note).replace(PHONE_RE, (m, pre, num) =>
+                pre + `<span class="phone-mask" tabindex="0" title="Số điện thoại - rê chuột để xem">${num}</span>`);
+        }
+
+        // Tooltip của cả ô cũng phải giấu số, nếu không thì làm mờ vô nghĩa
+        function noteTitle(note) {
+            return note.replace(PHONE_RE, '$1[số điện thoại]');
         }
 
         function txt(v) {
@@ -448,6 +467,7 @@
                     block: txt(v[COL.BLOCK]),
                     nhanvien: txt(v[COL.NHANVIEN]),
                     hopdong: txt(v[COL.HOPDONG]),
+                    ghichu: txt(v[COL.GHICHU]),
                     ngayFmt: fmt,
                     thang: fmt.length >= 10 ? fmt.substring(3, 10) : '',
                     check: check,
@@ -731,13 +751,13 @@
                     `<tr data-xuly="${esc(d.xuLy)}">
                         <td><input type="checkbox" class="row-checkbox" value="${r.rowIndex}"></td>
                         <td>${i + 1}</td>
-                        <td>${esc(d.vung)}</td>
                         <td>${esc(d.doitac)}</td>
                         <td>${esc(d.doitruong)}</td>
                         <td>${esc(d.block)}</td>
                         <td>${esc(d.nhanvien)}</td>
                         <td><span class="fw-bold text-primary">${esc(d.hopdong)}</span></td>
                         <td>${esc(d.ngayFmt)}</td>
+                        <td><div class="note-cell" title="${esc(noteTitle(d.ghichu))}">${noteHtml(d.ghichu)}</div></td>
                         <td>${checkHtml}</td>
                         <td>${xuLyHtml}</td>
                     </tr>`;
@@ -1143,6 +1163,7 @@
                 ), 'Nhân viên', [6, 24, 24, 20, 15, 14, 20, 14, 18, 14, 18]);
 
                 // Sheet chi tiết từng hợp đồng
+                // Ghi chú chứa thông tin liên hệ khách hàng nên không đưa vào file xuất
                 const detail = [['STT', 'Vùng', 'Đối tác', 'Đội trưởng', 'Block', 'Nhân viên', 'Số hợp đồng', 'Ngày PTC', 'Kết quả check', 'Hướng xử lý', 'Trạng thái']];
                 for (let i = 0; i < st.rows.length; i++) {
                     const d = st.rows[i]._;
