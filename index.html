@@ -49,6 +49,31 @@
             0% { transform: translate(0, 0); }
             100% { transform: translate(-100%, 0); }
         }
+        .sprint-banner {
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 10px 22px;
+            background: linear-gradient(100deg, #0f172a 0%, #7c2d12 55%, #c2410c 100%);
+            color: #fff; border-radius: 10px; padding: 12px 18px; margin-bottom: 16px;
+        }
+        .sprint-tag {
+            background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28);
+            border-radius: 20px; padding: 2px 12px; font-size: .72rem; font-weight: 800;
+            letter-spacing: .06em; white-space: nowrap;
+        }
+        .sprint-msg { font-weight: 700; font-size: .95rem; }
+        .sprint-sub { font-size: .76rem; color: rgba(255,255,255,.72); }
+        .sprint-right { display: flex; align-items: center; gap: 14px; }
+        .sprint-count { text-align: right; line-height: 1.15; white-space: nowrap; }
+        .sprint-num { font-size: 1.6rem; font-weight: 800; color: #fdba74; }
+        .sprint-track {
+            width: 190px; height: 7px; border-radius: 6px;
+            background: rgba(255,255,255,.2); overflow: hidden;
+        }
+        .sprint-fill { height: 100%; background: linear-gradient(90deg, #fb923c, #fde047); transition: width .5s ease; }
+        @media (max-width: 575px) {
+            .sprint-right { width: 100%; justify-content: space-between; }
+            .sprint-track { flex: 1; width: auto; }
+        }
         .fix-notice-banner {
             background: #fffbeb;
             border: 1px solid #fef3c7;
@@ -129,6 +154,21 @@
         <div class="marquee-container">
             <div class="marquee-text">
                 <i class="fa-solid fa-shield-halved me-2"></i> HỆ THỐNG GIÁM SÁT & QUẢN LÝ HỢP ĐỒNG CHI NHÁNH DNI <i class="fa-solid fa-chart-line ms-4 me-2"></i> TAB REPORT CHI TIẾT
+            </div>
+        </div>
+
+        <div class="sprint-banner" id="sprint-banner">
+            <div>
+                <span class="sprint-tag" id="sprint-tag">CHẶNG NƯỚC RÚT</span>
+                <span class="sprint-msg ms-2" id="sprint-msg">3 tháng cuối năm - tập trung cao độ để về đích</span>
+                <div class="sprint-sub mt-1" id="sprint-sub"></div>
+            </div>
+            <div class="sprint-right">
+                <div class="sprint-count">
+                    <div><span class="sprint-num" id="sprint-num">--</span> <span class="small">ngày</span></div>
+                    <div class="sprint-sub" id="sprint-deadline"></div>
+                </div>
+                <div class="sprint-track"><div class="sprint-fill" id="sprint-fill" style="width:0"></div></div>
             </div>
         </div>
 
@@ -1375,6 +1415,37 @@
             bootstrap.Modal.getOrCreateInstance(el['staffDetailModal']).show();
         }
 
+        /* ---------- Banner chặng nước rút cuối năm ---------- */
+
+        function renderSprint() {
+            const now = new Date();
+            const y = now.getFullYear();
+            const start = new Date(y, 9, 1);              // 01/10
+            const end = new Date(y, 11, 31, 23, 59, 59);  // 31/12
+            const DAY = 86400000;
+
+            const left = Math.max(0, Math.ceil((end - now) / DAY));
+            const total = Math.round((end - start) / DAY) + 1;
+
+            document.getElementById('sprint-num').textContent = left;
+            document.getElementById('sprint-deadline').textContent = `còn lại đến 31/12/${y}`;
+
+            if (now < start) {
+                const toStart = Math.ceil((start - now) / DAY);
+                document.getElementById('sprint-tag').textContent = 'SẮP VÀO CHẶNG NƯỚC RÚT';
+                document.getElementById('sprint-sub').textContent =
+                    `Còn ${toStart} ngày nữa bước vào 3 tháng cuối năm. Rà soát tồn đọng ngay từ bây giờ để vào chặng với nền sạch.`;
+                document.getElementById('sprint-fill').style.width = '0%';
+                return;
+            }
+
+            const passed = Math.min(total, Math.max(0, Math.round((now - start) / DAY) + 1));
+            const pct = Math.round((passed / total) * 100);
+            document.getElementById('sprint-sub').textContent =
+                `Đã đi ${passed}/${total} ngày của chặng (${pct}%). Mỗi hợp đồng xử lý dứt điểm hôm nay là một bước gần đích hơn.`;
+            document.getElementById('sprint-fill').style.width = pct + '%';
+        }
+
         /* ---------- Khởi tạo ---------- */
 
         function init() {
@@ -1401,6 +1472,8 @@
                 const card = e.target.closest('.product-card');
                 if (card) showStaffDetailModal(card.dataset.staff);
             });
+
+            renderSprint();
 
             // Vẽ ngay từ cache để người dùng thấy nội dung tức thì
             loadFromCache();
