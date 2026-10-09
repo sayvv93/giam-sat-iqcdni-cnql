@@ -1,1497 +1,243 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Giám Sát &amp; Quản Lý Hợp Đồng IQC</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IQC DNI · Thông báo chuyển nhà</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💸</text></svg>">
+<style>
+  :root {
+    --bg: #0f172a; --card: #ffffff; --ink: #0f172a; --muted: #64748b;
+    --brand: #f97316; --brand-2: #fde047; --ok: #16a34a; --line: #e2e8f0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; color: var(--ink);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: radial-gradient(circle at 20% 0%, #7c2d12 0%, transparent 45%),
+                radial-gradient(circle at 100% 100%, #1e3a8a 0%, transparent 40%), var(--bg);
+    padding: 16px;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; }
 
-    <!-- Bắt tay sớm với Worker và CDN, tiết kiệm ~100-300ms cho request đầu tiên -->
-    <link rel="preconnect" href="https://iqc-cache-worker.sayvv93.workers.dev" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  .ticker {
+    background: #020617; color: var(--brand-2); border-radius: 10px; overflow: hidden;
+    white-space: nowrap; padding: 9px 0; font-weight: 800; letter-spacing: .5px; font-size: .92rem;
+    border: 1px solid rgba(255,255,255,.08); margin-bottom: 16px;
+  }
+  .ticker span { display: inline-block; padding-left: 100%; animation: run 28s linear infinite; }
+  @keyframes run { to { transform: translateX(-100%); } }
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  .card {
+    background: var(--card); border-radius: 18px; padding: 28px 24px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.35); margin-bottom: 16px;
+  }
+  .hero { text-align: center; }
+  .hero .emoji { font-size: 4.2rem; line-height: 1; display: inline-block; animation: wobble 2.4s ease-in-out infinite; }
+  @keyframes wobble { 0%,100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
+  h1 { font-size: clamp(1.4rem, 4.5vw, 2rem); margin: 14px 0 6px; }
+  .sub { color: var(--muted); margin: 0 auto; max-width: 620px; line-height: 1.6; }
 
-    <!-- Font Awesome tải nền, không chặn lần vẽ đầu tiên -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-          media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+  .official {
+    margin: 22px auto 0; max-width: 640px; text-align: left;
+    border: 2px dashed var(--brand); background: #fff7ed; border-radius: 14px; padding: 16px 18px;
+  }
+  .official .tag {
+    display: inline-block; background: var(--brand); color: #fff; font-size: .72rem; font-weight: 800;
+    padding: 3px 10px; border-radius: 20px; letter-spacing: .05em; margin-bottom: 8px;
+  }
+  .official p { margin: 6px 0; line-height: 1.6; }
+  .official b.url { color: #c2410c; word-break: break-all; }
 
-    <!-- defer: tải song song, chạy sau khi HTML dựng xong -->
-    <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <style>
-        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .container-fluid { max-width: 1700px; padding: 20px; }
-        .marquee-container {
-            background: linear-gradient(135deg, #1e293b, #0f172a);
-            color: #ffffff;
-            padding: 10px 0;
-            overflow: hidden;
-            white-space: nowrap;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin-bottom: 10px;
-        }
-        .marquee-text {
-            display: inline-block;
-            padding-left: 100%;
-            animation: marquee 25s linear infinite;
-            font-weight: 800;
-            font-size: 1.1rem;
-            letter-spacing: 1px;
-            color: #38bdf8;
-            text-transform: uppercase;
-        }
-        @keyframes marquee {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(-100%, 0); }
-        }
-        .sprint-banner {
-            display: flex; align-items: center; justify-content: space-between;
-            flex-wrap: wrap; gap: 10px 22px;
-            background: linear-gradient(100deg, #0f172a 0%, #7c2d12 55%, #c2410c 100%);
-            color: #fff; border-radius: 10px; padding: 12px 18px; margin-bottom: 16px;
-        }
-        .sprint-tag {
-            background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28);
-            border-radius: 20px; padding: 2px 12px; font-size: .72rem; font-weight: 800;
-            letter-spacing: .06em; white-space: nowrap;
-        }
-        .sprint-msg { font-weight: 700; font-size: .95rem; }
-        .sprint-sub { font-size: .76rem; color: rgba(255,255,255,.72); }
-        .sprint-right { display: flex; align-items: center; gap: 14px; }
-        .sprint-count { text-align: right; line-height: 1.15; white-space: nowrap; }
-        .sprint-num { font-size: 1.6rem; font-weight: 800; color: #fdba74; }
-        .sprint-track {
-            width: 190px; height: 7px; border-radius: 6px;
-            background: rgba(255,255,255,.2); overflow: hidden;
-        }
-        .sprint-fill { height: 100%; background: linear-gradient(90deg, #fb923c, #fde047); transition: width .5s ease; }
-        @media (max-width: 575px) {
-            .sprint-right { width: 100%; justify-content: space-between; }
-            .sprint-track { flex: 1; width: auto; }
-        }
-        .fix-notice-banner {
-            background: #fffbeb;
-            border: 1px solid #fef3c7;
-            border-left: 4px solid #f59e0b;
-            color: #b45309;
-            padding: 10px 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            font-size: 0.95rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 6px 22px;
-        }
-        .fix-notice-banner a { color: #2563eb; font-weight: 700; text-decoration: none; }
-        .fix-notice-banner a:hover { text-decoration: underline; }
-        .notice-links { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 22px; }
-        .notice-links > span.notice-item { display: inline-flex; align-items: center; gap: 6px; }
-        .card-stat { background: #fff; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .tab-content-section { display: none; }
-        .tab-content-section.active { display: block; }
-        .product-card {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
-            position: relative;
-            transition: all 0.3s ease;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            cursor: pointer;
-        }
-        .product-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.12);
-            border-color: #2563eb;
-        }
-        .product-badge {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            font-size: 0.7rem;
-            padding: 3px 8px;
-            border-radius: 20px;
-            font-weight: 600;
-        }
-        .staff-name { font-size: 1rem; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
-        .staff-meta { font-size: 0.75rem; color: #64748b; margin-bottom: 10px; }
-        .chart-container { width: 100%; background: #fff; padding: 16px 18px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .toast-stack { position: fixed; top: 16px; right: 16px; z-index: 1080; width: min(380px, calc(100vw - 32px)); pointer-events: none; }
-        .toast-stack .alert { box-shadow: 0 8px 24px rgba(15,23,42,.18); border: 0; pointer-events: auto; margin-bottom: 0; }
-        .err-group { border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 10px; overflow: hidden; height: 100%; }
-        .err-group-head { padding: 10px 14px; font-weight: 700; font-size: .88rem; display: flex; justify-content: space-between; align-items: center; color: #fff; }
-        .err-group-body { max-height: 340px; overflow-y: auto; background: #fff; }
-        .err-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 14px; border-bottom: 1px solid #f1f5f9; font-size: .82rem; cursor: help; }
-        .err-row:last-child { border-bottom: 0; }
-        .err-row:hover { background: #f8fafc; }
-        .err-name { min-width: 0; }
-        .err-name b { display: block; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .err-name span { color: #94a3b8; font-size: .73rem; }
-        .err-count { flex: none; font-weight: 700; border-radius: 20px; padding: 1px 10px; font-size: .75rem; }
-        .phone-mask { filter: blur(3.5px); transition: filter .15s ease; cursor: pointer; }
-        .phone-mask:hover, .phone-mask:focus { filter: none; }
-        .note-cell { max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #475569; cursor: help; }
-        .search-box { position: relative; }
-        .search-box .fa-magnifying-glass { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: .8rem; }
-        .search-box input { padding-left: 30px; }
-        .hit-badge { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 6px; padding: 1px 7px; font-size: .75rem; font-weight: 700; }
-        .chart-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px; font-weight: 700; color: #0f172a; }
-        .chart-hint { font-size: 0.72rem; font-weight: 500; color: #94a3b8; white-space: nowrap; }
-        .chart-canvas { position: relative; height: 340px; width: 100%; }
-        .report-table-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
-    </style>
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 22px; position: relative; min-height: 56px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; border: 0; cursor: pointer; text-decoration: none;
+    font: inherit; font-weight: 800; border-radius: 12px; padding: 14px 22px; font-size: 1rem;
+  }
+  .btn-go { background: linear-gradient(90deg, var(--brand), #ea580c); color: #fff; box-shadow: 0 8px 20px rgba(234,88,12,.35); }
+  .btn-go:hover { filter: brightness(1.08); }
+  .btn-run { background: #e2e8f0; color: #334155; transition: transform .18s ease; }
+  .btn-run.loose { position: fixed; z-index: 50; }
+
+  .loader { margin: 22px auto 0; max-width: 520px; text-align: left; }
+  .loader .label { font-size: .85rem; color: var(--muted); display: flex; justify-content: space-between; }
+  .bar { height: 12px; border-radius: 8px; background: #f1f5f9; overflow: hidden; margin-top: 6px; }
+  .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--brand), var(--brand-2)); animation: fill 4s ease-out forwards; }
+  @keyframes fill { to { width: 99%; } }
+
+  h2 { font-size: 1.15rem; margin: 0 0 4px; }
+  .note { color: var(--muted); font-size: .85rem; margin: 0 0 16px; }
+  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .plan { border: 1px solid var(--line); border-radius: 14px; padding: 16px; position: relative; }
+  .plan.hot { border: 2px solid var(--ok); background: #f0fdf4; }
+  .plan .ribbon {
+    position: absolute; top: -10px; right: 12px; background: var(--ok); color: #fff;
+    font-size: .68rem; font-weight: 800; padding: 3px 9px; border-radius: 20px;
+  }
+  .plan .name { font-weight: 800; }
+  .plan .price { font-size: 1.25rem; font-weight: 800; color: #c2410c; margin: 6px 0; }
+  .plan.hot .price { color: var(--ok); }
+  .plan ul { margin: 8px 0 0; padding-left: 18px; color: #334155; font-size: .88rem; line-height: 1.55; }
+  .plan.dead { opacity: .55; }
+  .plan.dead .name { text-decoration: line-through; }
+
+  .faq details { border-bottom: 1px solid var(--line); padding: 12px 0; }
+  .faq details:last-child { border-bottom: 0; }
+  .faq summary { cursor: pointer; font-weight: 700; }
+  .faq p { margin: 8px 0 0; color: #334155; line-height: 1.6; }
+
+  footer { text-align: center; color: rgba(255,255,255,.6); font-size: .82rem; padding: 10px 0 24px; }
+
+  @media (max-width: 480px) {
+    .card { padding: 22px 16px; }
+    .btn { width: 100%; justify-content: center; }
+  }
+</style>
 </head>
 <body>
-    <div class="container-fluid">
-        <div class="marquee-container">
-            <div class="marquee-text">
-                <i class="fa-solid fa-shield-halved me-2"></i> HỆ THỐNG GIÁM SÁT & QUẢN LÝ HỢP ĐỒNG CHI NHÁNH DNI <i class="fa-solid fa-chart-line ms-4 me-2"></i> TAB REPORT CHI TIẾT
-            </div>
-        </div>
+<div class="wrap">
 
-        <div class="sprint-banner" id="sprint-banner">
-            <div>
-                <span class="sprint-tag" id="sprint-tag">CHẶNG NƯỚC RÚT</span>
-                <span class="sprint-msg ms-2" id="sprint-msg">3 tháng cuối năm - tập trung cao độ để về đích</span>
-                <div class="sprint-sub mt-1" id="sprint-sub"></div>
-            </div>
-            <div class="sprint-right">
-                <div class="sprint-count">
-                    <div><span class="sprint-num" id="sprint-num">--</span> <span class="small">ngày</span></div>
-                    <div class="sprint-sub" id="sprint-deadline"></div>
-                </div>
-                <div class="sprint-track"><div class="sprint-fill" id="sprint-fill" style="width:0"></div></div>
-            </div>
-        </div>
+  <div class="ticker"><span>
+    📢 THÔNG BÁO KHẨN: SERVER ĐÃ ĂN MÌ GÓI 3 THÁNG LIÊN TỤC &nbsp;•&nbsp; GOOGLE SHEET ĐÒI TĂNG LƯƠNG &nbsp;•&nbsp;
+    TỪ 10/10/2026 MỜI ANH/CHỊ QUA BAOTRI.FTELDNI.COM &nbsp;•&nbsp; CẢM ƠN ĐÃ THƯƠNG IQC 💛
+  </span></div>
 
-        <div class="fix-notice-banner">
-            <div class="notice-links">
-                <span class="notice-item">
-                    <i class="fa-solid fa-triangle-exclamation"></i>
-                    <span>Ảnh lỗi KTV khắc phục lại tại:</span>
-                    <a href="https://uploadiqc.fteldni.com" target="_blank" rel="noopener noreferrer">uploadiqc.fteldni.com <i class="fa-solid fa-arrow-up-right-from-square small"></i></a>
-                </span>
-                <span class="notice-item">
-                    <i class="fa-solid fa-images"></i>
-                    <span>Xem ảnh KTV upload khi TKM:</span>
-                    <a href="http://iqc.fpt.net/" target="_blank" rel="noopener noreferrer">iqc.fpt.net <i class="fa-solid fa-arrow-up-right-from-square small"></i></a>
-                </span>
-            </div>
-            <span class="small text-muted fst-italic">Hệ thống hỗ trợ KTV xử lý ảnh hợp đồng</span>
-        </div>
+  <div class="card hero">
+    <div class="emoji">💸</div>
+    <h1>Hệ thống IQC xin phép… hết tiền</h1>
+    <p class="sub">
+      Sau nhiều tháng gồng gánh hàng nghìn hợp đồng, 6 bộ lọc và vô số lần bấm "Tải lại dữ liệu mới",
+      quỹ hoạt động đã chính thức về 0 đồng. Gói data miễn phí cũng xin nghỉ hưu sớm vì
+      <i>"không đáp ứng nổi nhiệt huyết của anh em"</i>.
+    </p>
 
-        <div id="alert-container" class="toast-stack"></div>
-
-        <div class="mb-4 text-center">
-            <button class="btn btn-outline-secondary px-4 fw-bold" id="btn-tab-iqc" onclick="switchTab('iqc')"><i class="fa-solid fa-laptop me-2"></i>IQC & Đầu Vào</button>
-            <button class="btn btn-primary active px-4 ms-2 fw-bold" id="btn-tab-report" onclick="switchTab('report')"><i class="fa-solid fa-chart-pie me-2"></i>Report</button>
-        </div>
-
-        <!-- 4 THẺ THỐNG KÊ TỔNG QUAN -->
-        <div class="row text-center">
-            <div class="col-md-3">
-                <div class="card-stat border-start border-primary border-4">
-                    <h6 class="text-muted fw-bold small">CHƯA KIỂM TRA</h6>
-                    <h3 id="sum-chuakiemtra" class="text-primary mb-0 fw-bold">0</h3>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card-stat border-start border-warning border-4">
-                    <h6 class="text-muted fw-bold small">CHƯA XỬ LÝ</h6>
-                    <h3 id="sum-chuaxuly" class="text-warning mb-0 fw-bold">0</h3>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card-stat border-start border-success border-4">
-                    <h6 class="text-muted fw-bold small">ĐÃ HOÀN THÀNH</h6>
-                    <h3 id="sum-hoanthanh" class="text-success mb-0 fw-bold">0</h3>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card-stat border-start border-secondary border-4">
-                    <h6 class="text-muted fw-bold small">TỔNG SỐ LƯỢNG</h6>
-                    <h3 id="sum-tong" class="text-secondary mb-0 fw-bold">0</h3>
-                </div>
-            </div>
-        </div>
-
-        <!-- BỘ LỌC PHÂN CẤP -->
-        <div class="card card-stat border-0 shadow-sm mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
-                <span class="fw-bold text-dark"><i class="fa-solid fa-filter me-2 text-primary"></i>Bộ lọc phân cấp dữ liệu</span>
-                <div>
-                    <button class="btn btn-outline-primary btn-sm me-2 fw-bold" onclick="fetchSheetData()"><i class="fa-solid fa-sync me-1"></i> Tải lại dữ liệu mới</button>
-                    <button class="btn btn-outline-danger btn-sm me-2 fw-bold" onclick="resetAllFilters()"><i class="fa-solid fa-rotate-left me-1"></i> Reset bộ lọc</button>
-                    <button class="btn btn-success btn-sm fw-bold" id="btn-export-excel" onclick="exportExcel()"><i class="fa-solid fa-file-excel me-1"></i> Xuất Excel</button>
-                </div>
-            </div>
-            <div class="row g-3">
-                <div class="col-md">
-                    <select id="global-filter-thang" class="form-select form-select-sm" onchange="onGlobalFilterChange('thang')"><option value="">Tất cả tháng</option></select>
-                </div>
-                <!-- Ô lọc Vùng ẩn khỏi giao diện nhưng vẫn giữ trong DOM để logic lọc phân cấp chạy bình thường -->
-                <div class="col-md d-none">
-                    <select id="global-filter-vung" class="form-select form-select-sm" onchange="onGlobalFilterChange('vung')"><option value="">Tất cả vùng</option></select>
-                </div>
-                <div class="col-md">
-                    <select id="global-filter-doitac" class="form-select form-select-sm" onchange="onGlobalFilterChange('doitac')"><option value="">Tất cả đối tác</option></select>
-                </div>
-                <div class="col-md">
-                    <select id="global-filter-doitruong" class="form-select form-select-sm" onchange="onGlobalFilterChange('doitruong')"><option value="">Tất cả đội trưởng</option></select>
-                </div>
-                <div class="col-md">
-                    <select id="global-filter-block" class="form-select form-select-sm" onchange="onGlobalFilterChange('block')"><option value="">Tất cả block</option></select>
-                </div>
-                <div class="col-md">
-                    <select id="global-filter-nhanvien" class="form-select form-select-sm" onchange="onGlobalFilterChange('nhanvien')"><option value="">Tất cả nhân viên</option></select>
-                </div>
-            </div>
-            <div class="row g-3 mt-1 pt-3 border-top" id="search-row" style="display: none;">
-                <div class="col-md-4">
-                    <div class="search-box">
-                        <i class="fa-solid fa-magnifying-glass"></i>
-                        <input type="search" id="search-hopdong" class="form-control form-control-sm"
-                               placeholder="Nhập số hợp đồng" autocomplete="off">
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB 1: IQC & Đầu Vào -->
-        <div id="section-iqc" class="tab-content-section">
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
-                    <span class="fw-bold" id="table-title"><i class="fa-solid fa-list-check me-2"></i>Danh sách dữ liệu tồn đọng xử lý (Chọn tối đa 5 dòng)</span>
-                    <div class="d-flex align-items-center flex-wrap gap-2">
-                        <div class="btn-group btn-group-sm" role="group" id="view-switch">
-                            <button type="button" class="btn btn-light active" data-view="tondong" onclick="setView('tondong')">Tồn đọng</button>
-                            <button type="button" class="btn btn-outline-light" data-view="dacheck" onclick="setView('dacheck')">Đã check</button>
-                            <button type="button" class="btn btn-outline-light" data-view="all" onclick="setView('all')">Tất cả</button>
-                        </div>
-                        <button id="btn-bulk-submit" class="btn btn-sm btn-success fw-bold" onclick="bulkSubmit()"><i class="fa-solid fa-paper-plane me-1"></i> Gửi dữ liệu đã chọn</button>
-                        <label class="small">Hiển thị:</label>
-                        <select id="select-limit" class="form-select form-select-sm d-inline-block w-auto" onchange="filterData()">
-                            <option value="50">50 dòng</option>
-                            <option value="100">100 dòng</option>
-                            <option value="all">Tất cả</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="card-body bg-light py-2 border-bottom" id="filter-warning-container"></div>
-                <div class="card-body p-0">
-                    <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
-                        <table class="table table-striped table-hover align-middle mb-0 small">
-                            <thead class="table-secondary sticky-top">
-                                <tr>
-                                    <th style="width: 40px;"><input type="checkbox" id="select-all" onclick="toggleSelectAll(this)"></th>
-                                    <th style="width: 50px;">STT</th>
-                                    <th>Đối tác</th>
-                                    <th>Đội trưởng</th>
-                                    <th>Block</th>
-                                    <th>Nhân viên</th>
-                                    <th>Số hợp đồng</th>
-                                    <th>Ngày PTC</th>
-                                    <th style="width: 260px;">Ghi chú (J)</th>
-                                    <th style="width: 200px;">Kết quả Check (H)</th>
-                                    <th style="width: 250px;">Hướng xử lý chưa đạt chuẩn (I)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-body">
-                                <tr><td colspan="11" class="text-center py-4 text-muted">Vui lòng chọn Đội trưởng hoặc Nhân viên ở bộ lọc để hiển thị dữ liệu...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB 2: REPORT MỚI -->
-        <div id="section-report" class="tab-content-section active">
-            <!-- Biểu đồ tổng quan -->
-            <div class="row">
-                <div class="col-xl-7">
-                    <div class="chart-container">
-                        <div class="chart-head">
-                            <span><i class="fa-solid fa-ranking-star text-primary me-2"></i>Tỷ lệ hoàn thành theo Đội Trưởng</span>
-                            <span class="chart-hint">Xếp từ cao xuống thấp</span>
-                        </div>
-                        <div class="chart-canvas"><canvas id="leaderChart"></canvas></div>
-                    </div>
-                </div>
-                <div class="col-xl-5">
-                    <div class="chart-container">
-                        <div class="chart-head">
-                            <span><i class="fa-solid fa-handshake text-success me-2"></i>Tỷ lệ hoàn thành theo Đối Tác</span>
-                            <span class="chart-hint">Xếp từ cao xuống thấp</span>
-                        </div>
-                        <div class="chart-canvas"><canvas id="partnerChart"></canvas></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Report nhóm lỗi -->
-            <div class="report-table-card">
-                <h6 class="fw-bold text-dark mb-3">
-                    <i class="fa-solid fa-layer-group text-warning me-2"></i>Report nhóm lỗi theo nhân viên
-                    <span class="fw-normal text-muted small ms-2">Xếp theo số lượng giảm dần, rê chuột vào tên để xem số hợp đồng</span>
-                </h6>
-                <div class="row g-3" id="error-groups"></div>
-            </div>
-
-            <!-- Bảng Thống Kê Chi Tiết Theo Đội Trưởng -->
-            <div class="report-table-card">
-                <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-table-list text-primary me-2"></i>Bảng thống kê chi tiết theo Đội Trưởng</h6>
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped align-middle small text-center mb-0">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>STT</th>
-                                <th>Đội Trưởng</th>
-                                <th>Tổng Khối Lượng</th>
-                                <th>Chưa Kiểm Tra</th>
-                                <th>IQC & Đầu Vào Chuẩn</th>
-                                <th>IQC Chưa Đạt (Tổng)</th>
-                                <th>Đầu Vào Chưa Đạt (Tổng)</th>
-                                <th>Đã Hoàn Thành</th>
-                                <th>Tỷ Lệ Hoàn Thành</th>
-                            </tr>
-                        </thead>
-                        <tbody id="report-table-leader-body"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Bảng Thống Kê Chi Tiết Theo Đối Tác -->
-            <div class="report-table-card">
-                <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-table-list text-success me-2"></i>Bảng thống kê chi tiết theo Đối Tác Quản Lý</h6>
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped align-middle small text-center mb-0">
-                        <thead class="table-success text-dark">
-                            <tr>
-                                <th>STT</th>
-                                <th>Đối Tác</th>
-                                <th>Tổng Khối Lượng</th>
-                                <th>Chưa Kiểm Tra</th>
-                                <th>IQC & Đầu Vào Chuẩn</th>
-                                <th>IQC Chưa Đạt (Tổng)</th>
-                                <th>Đầu Vào Chưa Đạt (Tổng)</th>
-                                <th>Đã Hoàn Thành</th>
-                                <th>Tỷ Lệ Hoàn Thành</th>
-                            </tr>
-                        </thead>
-                        <tbody id="report-table-partner-body"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Thẻ E-commerce Nhân Viên -->
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-white py-3 fw-bold text-dark">
-                    <i class="fa-solid fa-users-viewfinder me-2 text-primary"></i>Hiệu suất chi tiết Nhân Viên (Rê chuột vào thẻ để xem thông số chi tiết lỗi)
-                </div>
-                <div class="card-body bg-light">
-                    <div id="staff-cards-container" class="row"></div>
-                </div>
-            </div>
-        </div>
+    <div class="loader" aria-hidden="true">
+      <div class="label"><span>⏳ Đang cố nạp thêm tiền cho server…</span><span id="pct">0%</span></div>
+      <div class="bar"><i></i></div>
     </div>
 
-    <!-- Modal Chi Tiết Nhân Viên -->
-    <div class="modal fade" id="staffDetailModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title fw-bold" id="modal-staff-title"><i class="fa-solid fa-user-gear me-2"></i>Chi tiết công việc</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body" id="modal-staff-body"></div>
-            </div>
-        </div>
+    <div class="official">
+      <span class="tag">THÔNG BÁO CHÍNH THỨC · KHÔNG ĐÙA</span>
+      <p>Do không còn kinh phí hoạt động và data miễn phí không còn đáp ứng được,
+        <b>từ ngày 10/10/2026</b> hệ thống chuyển sang phiên bản trả phí dữ liệu.</p>
+      <p>👉 Anh/chị vui lòng truy cập: <b class="url">baotri.fteldni.com</b></p>
     </div>
-    <script>
-    (function () {
-        "use strict";
 
-        const WEB_APP_URL = "https://iqc-cache-worker.sayvv93.workers.dev/";
-        const COL = { VUNG: 0, DOITAC: 1, DOITRUONG: 2, BLOCK: 3, NHANVIEN: 4, HOPDONG: 5, NGAY_PTC: 6, CHECK: 7, HUONG_XY: 8, GHICHU: 9 };
-        const CACHE_NAME = 'iqc_sheet_data';
-        const FILTER_IDS = ['thang', 'vung', 'doitac', 'doitruong', 'block', 'nhanvien'];
-
-        let globalData = { rows: [] };
-        let leaderChart = null;
-        let partnerChart = null;
-        let alertTimer = null;
-        let viewMode = 'tondong';   // tondong | dacheck | all
-
-        // Cache tham chiếu DOM một lần, thay vì getElementById lặp đi lặp lại
-        const el = {};
-        function cacheDom() {
-            ['alert-container', 'filter-warning-container', 'table-body', 'select-limit',
-             'sum-chuakiemtra', 'sum-chuaxuly', 'sum-hoanthanh', 'sum-tong',
-             'section-iqc', 'section-report', 'btn-tab-iqc', 'btn-tab-report',
-             'report-table-leader-body', 'report-table-partner-body', 'staff-cards-container',
-             'leaderChart', 'partnerChart', 'modal-staff-title', 'modal-staff-body',
-             'staffDetailModal', 'select-all', 'search-hopdong', 'search-row', 'table-title', 'view-switch', 'error-groups'
-            ].forEach(id => { el[id] = document.getElementById(id); });
-            FILTER_IDS.forEach(k => { el[k] = document.getElementById('global-filter-' + k); });
-        }
-
-        /* ---------- Tiện ích ---------- */
-
-        // Chặn dữ liệu từ Sheet phá vỡ HTML (dấu ngoặc kép, dấu <, ...)
-        const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-        function esc(s) {
-            return s == null ? '' : String(s).replace(/[&<>"']/g, c => ESC[c]);
-        }
-
-        /* Nhận diện số điện thoại trong ghi chú.
-           Bốn dạng viết, xếp từ cụ thể đến tổng quát. Không dùng lookbehind
-           để chạy được trên Safari đời cũ; ranh giới kiểm tra bằng tay bên dưới. */
-        const PHONE_RE = new RegExp([
-            '\\+?84[\\s.\\-]?\\d{3}[\\s.\\-]?\\d{3}[\\s.\\-]?\\d{3,4}',  // +84 / 84...
-            '0\\d{2,3}[\\s.\\-]\\d{3,4}[\\s.\\-]\\d{3,4}',               // 0913.456.789 / 0973 031 105
-            '0\\d{9,10}',                                                 // 0337377929 / 01663377929
-            '[35789]\\d{8}'                                               // 937031105 (viết thiếu số 0)
-        ].join('|'), 'g');
-
-        // Cắt ghi chú thành các đoạn [chữ thường, số điện thoại]
-        function noteParts(note) {
-            const parts = [];
-            let last = 0, m;
-            PHONE_RE.lastIndex = 0;
-            while ((m = PHONE_RE.exec(note)) !== null) {
-                const st = m.index, en = st + m[0].length;
-                const before = st > 0 ? note[st - 1] : '';
-                const after = en < note.length ? note[en] : '';
-                if (/[\d+]/.test(before) || /\d/.test(after)) continue;              // dính vào số khác
-                if (/[.,]/.test(before) && /\d/.test(note[st - 2] || '')) continue;  // phần thập phân của toạ độ
-                if (/[.,]/.test(after) && /\d/.test(note[en + 1] || '')) continue;
-                parts.push([note.slice(last, st), m[0]]);
-                last = en;
-            }
-            parts.push([note.slice(last), null]);
-            return parts;
-        }
-
-        function noteHtml(note) {
-            if (!note) return '<span class="text-muted">-</span>';
-            let html = '';
-            for (const [plain, phone] of noteParts(note)) {
-                html += esc(plain);
-                if (phone) html += `<span class="phone-mask" tabindex="0" title="Số điện thoại - rê chuột để xem">${esc(phone)}</span>`;
-            }
-            return html;
-        }
-
-        // Tooltip của cả ô cũng phải giấu số, nếu không thì làm mờ vô nghĩa
-        function noteTitle(note) {
-            let out = '';
-            for (const [plain, phone] of noteParts(note)) {
-                out += plain;
-                if (phone) out += '[số điện thoại]';
-            }
-            return out;
-        }
-
-        function txt(v) {
-            return v == null || v === '' ? '' : String(v).trim();
-        }
-
-        function showAlert(html, autoHideMs) {
-            clearTimeout(alertTimer);
-            el['alert-container'].innerHTML = html;
-            if (autoHideMs) {
-                alertTimer = setTimeout(() => { el['alert-container'].innerHTML = ''; }, autoHideMs);
-            }
-        }
-
-        function formatNgayPTC(valG) {
-            if (!valG) return "";
-            const str = String(valG).trim();
-            if (str.includes("T") || str.includes("-")) {
-                const d = new Date(str);
-                if (!isNaN(d.getTime())) {
-                    const p = n => String(n).padStart(2, '0');
-                    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
-                }
-            }
-            return str;
-        }
-
-        /* ---------- Chuẩn hoá + tiền xử lý dữ liệu ---------- */
-
-        // Chấp nhận cả 2 định dạng: {rows:[{rowIndex,values}]} và {startRow, rows:[[...]]}
-        function normalize(data) {
-            if (!data || !Array.isArray(data.rows)) return { rows: [] };
-            if (data.rows.length && Array.isArray(data.rows[0])) {
-                const start = data.startRow || 2;
-                return {
-                    headers: data.headers,
-                    rows: data.rows.map((v, i) => ({ rowIndex: start + i, values: v }))
-                };
-            }
-            return data;
-        }
-
-        /**
-         * Điểm tối ưu lớn nhất phía trình duyệt.
-         * Trước đây mỗi lần lọc lại chạy new Date() và toLowerCase() trên toàn bộ dòng,
-         * mà một thao tác đổi bộ lọc gọi tới 6-7 lượt quét. Giờ tính đúng một lần.
-         */
-        function prepare(rows) {
-            for (let i = 0; i < rows.length; i++) {
-                const v = rows[i].values;
-                const fmt = formatNgayPTC(v[COL.NGAY_PTC]);
-                const check = txt(v[COL.CHECK]);
-                const xuLy = txt(v[COL.HUONG_XY]);
-                const c = check.toLowerCase();
-                const x = xuLy.toLowerCase();
-
-                const isChuaKiemTra = c === '' || c.includes('chưa kiểm tra');
-                const isChuan = c.includes('iqc & đầu vào chuẩn') || c.includes('đã đạt chuẩn 6 hình');
-                const isCompleted = isChuan || x.includes('đã xử lý lại');
-
-                rows[i]._ = {
-                    vung: txt(v[COL.VUNG]),
-                    doitac: txt(v[COL.DOITAC]),
-                    doitruong: txt(v[COL.DOITRUONG]),
-                    block: txt(v[COL.BLOCK]),
-                    nhanvien: txt(v[COL.NHANVIEN]),
-                    hopdong: txt(v[COL.HOPDONG]),
-                    ghichu: txt(v[COL.GHICHU]),
-                    ngayFmt: fmt,
-                    thang: fmt.length >= 10 ? fmt.substring(3, 10) : '',
-                    check: check,
-                    xuLy: xuLy,
-                    isChuaKiemTra: isChuaKiemTra,
-                    isChuan: isChuan,
-                    isIqcChuaDat: c.includes('iqc chưa đạt'),
-                    isDauVaoChuaDat: c.includes('đầu vào chưa đạt'),
-                    isCompleted: isCompleted,
-                    isPending: !isCompleted && !isChuaKiemTra
-                };
-            }
-            return rows;
-        }
-
-        /* ---------- Tải dữ liệu ---------- */
-
-        function saveCache(data) {
-            // Tách riêng try: lỗi đầy bộ nhớ không được hiểu nhầm thành lỗi mạng
-            try {
-                localStorage.setItem(CACHE_NAME, JSON.stringify(data));
-            } catch (e) {
-                /* Vượt dung lượng localStorage - bỏ qua, không ảnh hưởng hiển thị */
-            }
-        }
-
-        async function fetchSheetData(quiet) {
-            if (!quiet) showAlert('<div class="alert alert-info py-2">⏳ Đang tải dữ liệu mới từ hệ thống...</div>');
-            try {
-                const res = await fetch(WEB_APP_URL + "?action=getData");
-                if (!res.ok) throw new Error("Lỗi kết nối HTTP: " + res.status);
-
-                const raw = await res.json();
-                if (raw && raw.status === 'error') throw new Error(raw.message);
-
-                const data = normalize(raw);
-                if (!data.rows) throw new Error("Dữ liệu không hợp lệ");
-
-                globalData = data;
-                prepare(globalData.rows);
-
-                if (!quiet) showAlert(`<div class="alert alert-success py-2">✅ Đồng bộ dữ liệu thành công lúc ${new Date().toLocaleTimeString()}</div>`, 3000);
-
-                updateGlobalFilters();
-                filterData();
-                if (el['section-report'].classList.contains('active')) renderReportContent();
-
-                // Ghi cache lúc trình duyệt rảnh, không làm khựng giao diện
-                const idle = window.requestIdleCallback || (fn => setTimeout(fn, 200));
-                idle(() => saveCache(raw));
-
-            } catch (error) {
-                if (loadFromCache()) {
-                    showAlert('<div class="alert alert-warning py-2">⚠️ Dùng dữ liệu lưu trữ cục bộ (Cache).</div>');
-                    return;
-                }
-                showAlert(`<div class="alert alert-danger">❌ Không thể kết nối đến hệ thống. ${esc(error.message)}</div>`);
-            }
-        }
-
-        function loadFromCache() {
-            try {
-                const cached = localStorage.getItem(CACHE_NAME);
-                if (!cached) return false;
-                globalData = normalize(JSON.parse(cached));
-                prepare(globalData.rows);
-                updateGlobalFilters();
-                filterData();
-                return true;
-            } catch (e) {
-                return false;
-            }
-        }
-
-        /* ---------- Bộ lọc ---------- */
-
-        function readFilters() {
-            const f = {};
-            for (const k of FILTER_IDS) f[k] = el[k].value;
-            return f;
-        }
-
-        // Một lượt quét duy nhất thay cho 6 lượt filter + 5 mảng trung gian
-        function updateGlobalFilters() {
-            const f = readFilters();
-            const S = {};
-            for (const k of FILTER_IDS) S[k] = new Set();
-
-            const rows = globalData.rows;
-            for (let i = 0; i < rows.length; i++) {
-                const d = rows[i]._;
-                if (d.thang) S.thang.add(d.thang);
-                if (f.thang && d.thang !== f.thang) continue;
-                if (d.vung) S.vung.add(d.vung);
-                if (f.vung && d.vung !== f.vung) continue;
-                if (d.doitac) S.doitac.add(d.doitac);
-                if (f.doitac && d.doitac !== f.doitac) continue;
-                if (d.doitruong) S.doitruong.add(d.doitruong);
-                if (f.doitruong && d.doitruong !== f.doitruong) continue;
-                if (d.block) S.block.add(d.block);
-                if (f.block && d.block !== f.block) continue;
-                if (d.nhanvien) S.nhanvien.add(d.nhanvien);
-            }
-
-            const cmp = (a, b) => a.localeCompare(b, 'vi');
-            fillSelect('thang', [...S.thang].sort(cmp), f.thang, 'Tất cả tháng');
-            fillSelect('vung', [...S.vung].sort(cmp), f.vung, 'Tất cả vùng');
-            fillSelect('doitac', [...S.doitac].sort(cmp), f.doitac, 'Tất cả đối tác');
-            fillSelect('doitruong', [...S.doitruong].sort(cmp), f.doitruong, 'Tất cả đội trưởng');
-            fillSelect('block', [...S.block].sort(cmp), f.block, 'Tất cả block');
-            fillSelect('nhanvien', [...S.nhanvien].sort(cmp), f.nhanvien, 'Tất cả nhân viên');
-        }
-
-        function fillSelect(key, arr, currentVal, defaultText) {
-            const sel = el[key];
-            let html = `<option value="">${defaultText}</option>`;
-            for (let i = 0; i < arr.length; i++) {
-                const v = esc(arr[i]);
-                html += `<option value="${v}">${v}</option>`;
-            }
-            sel.innerHTML = html;
-            sel.value = arr.includes(currentVal) ? currentVal : "";
-        }
-
-        function getFilteredRows() {
-            const f = readFilters();
-            const rows = globalData.rows;
-            const out = [];
-            for (let i = 0; i < rows.length; i++) {
-                const d = rows[i]._;
-                if (f.thang && d.thang !== f.thang) continue;
-                if (f.vung && d.vung !== f.vung) continue;
-                if (f.doitac && d.doitac !== f.doitac) continue;
-                if (f.doitruong && d.doitruong !== f.doitruong) continue;
-                if (f.block && d.block !== f.block) continue;
-                if (f.nhanvien && d.nhanvien !== f.nhanvien) continue;
-                out.push(rows[i]);
-            }
-            return out;
-        }
-
-        const VIEW_TITLE = {
-            tondong: '<i class="fa-solid fa-list-check me-2"></i>Danh sách dữ liệu tồn đọng xử lý (Chọn tối đa 5 dòng)',
-            dacheck: '<i class="fa-solid fa-clipboard-check me-2"></i>Danh sách hợp đồng đã check (Chọn tối đa 5 dòng để sửa lại)',
-            all: '<i class="fa-solid fa-layer-group me-2"></i>Toàn bộ hợp đồng trong phạm vi lọc (Chọn tối đa 5 dòng)'
-        };
-
-        function setView(mode) {
-            viewMode = mode;
-            for (const b of el['view-switch'].querySelectorAll('button')) {
-                const on = b.dataset.view === mode;
-                b.classList.toggle('active', on);
-                b.classList.toggle('btn-light', on);
-                b.classList.toggle('btn-outline-light', !on);
-            }
-            el['table-title'].innerHTML = VIEW_TITLE[mode];
-            filterData();
-        }
-
-        function onGlobalFilterChange(level) {
-            // Xoá các cấp lọc thấp hơn
-            const idx = FILTER_IDS.indexOf(level);
-            for (let i = idx + 1; i < FILTER_IDS.length; i++) el[FILTER_IDS[i]].value = "";
-            updateGlobalFilters();
-            filterData();
-            if (el['section-report'].classList.contains('active')) renderReportContent();
-        }
-
-        function resetAllFilters() {
-            for (const k of FILTER_IDS) el[k].value = "";
-            el['search-hopdong'].value = "";
-            updateGlobalFilters();
-            filterData();
-            if (el['section-report'].classList.contains('active')) renderReportContent();
-        }
-
-        /* ---------- Tab ---------- */
-
-        function switchTab(tabName) {
-            // Ô tìm kiếm chỉ phục vụ bảng xử lý, không liên quan tab Report
-            el['search-row'].style.display = tabName === 'iqc' ? '' : 'none';
-
-            el['section-iqc'].classList.toggle('active', tabName === 'iqc');
-            el['section-report'].classList.toggle('active', tabName === 'report');
-
-            const on = tabName === 'iqc' ? el['btn-tab-iqc'] : el['btn-tab-report'];
-            const off = tabName === 'iqc' ? el['btn-tab-report'] : el['btn-tab-iqc'];
-            on.classList.remove('btn-outline-secondary');
-            on.classList.add('btn-primary', 'active');
-            off.classList.remove('btn-primary', 'active');
-            off.classList.add('btn-outline-secondary');
-
-            if (tabName === 'report') renderReportContent();
-        }
-
-        /* ---------- Bảng xử lý ---------- */
-
-        // Từ khoá tìm kiếm số hợp đồng, rỗng nghĩa là không tìm
-        function searchTerm() {
-            const v = el['search-hopdong'].value.trim().toLowerCase();
-            return v.length >= 2 ? v : '';
-        }
-
-        function filterData() {
-            const f = readFilters();
-            const rows = getFilteredRows();
-            const q = searchTerm();
-
-            let chuaKiemTra = 0, chuaXuLy = 0, hoanthanh = 0;
-            const tonDong = [];   // chưa hoàn thành: chưa kiểm tra + chưa xử lý
-            const daCheck = [];   // đã có kết quả check, dù đã xong hay chưa
-
-            // Một lượt duy nhất: vừa đếm, vừa gom các nhóm hiển thị
-            for (let i = 0; i < rows.length; i++) {
-                const d = rows[i]._;
-                if (!d.isChuaKiemTra) daCheck.push(rows[i]);
-                if (d.isCompleted) { hoanthanh++; continue; }
-                tonDong.push(rows[i]);
-                if (d.isChuaKiemTra) chuaKiemTra++;
-                else if (d.isPending) chuaXuLy++;
-            }
-
-            el['sum-chuakiemtra'].textContent = chuaKiemTra;
-            el['sum-chuaxuly'].textContent = chuaXuLy;
-            el['sum-hoanthanh'].textContent = hoanthanh;
-            el['sum-tong'].textContent = rows.length;
-
-            // Đang tìm kiếm: hiện thẳng kết quả, kể cả hợp đồng đã hoàn thành,
-            // và không bắt buộc phải chọn Đội trưởng hay Nhân viên
-            if (q) {
-                // Tìm trên toàn bộ dữ liệu, bỏ qua mọi bộ lọc: số hợp đồng là duy nhất,
-                // người dùng cần thấy nó dù đang lọc ở đội nào
-                const all = globalData.rows;
-                const hits = [];
-                for (let i = 0; i < all.length && hits.length < 200; i++) {
-                    if (all[i]._.hopdong.toLowerCase().includes(q)) hits.push(all[i]);
-                }
-                const kw = esc(el['search-hopdong'].value.trim());
-                el['filter-warning-container'].innerHTML = hits.length
-                    ? `<div class="alert alert-primary py-2 mb-0 small fw-bold"><i class="fa-solid fa-magnifying-glass me-1"></i> Tìm thấy <span class="hit-badge">${hits.length}</span> hợp đồng khớp "<b>${kw}</b>" trên toàn bộ dữ liệu (không phụ thuộc bộ lọc).</div>`
-                    : `<div class="alert alert-secondary py-2 mb-0 small fw-bold"><i class="fa-solid fa-circle-info me-1"></i> Không có hợp đồng nào khớp "<b>${kw}</b>" trên toàn bộ dữ liệu.</div>`;
-                renderTable(hits);
-                return;
-            }
-
-            if (!f.doitruong && !f.nhanvien) {
-                el['filter-warning-container'].innerHTML =
-                    '<div class="alert alert-warning py-2 mb-0 small fw-bold"><i class="fa-solid fa-triangle-exclamation me-1"></i> Vui lòng chọn cụ thể <b>Đội trưởng</b> hoặc <b>Nhân viên</b> ở bộ lọc, hoặc nhập số hợp đồng vào ô tìm kiếm, để hiển thị dữ liệu bảng xử lý!</div>';
-                el['table-body'].innerHTML =
-                    '<tr><td colspan="11" class="text-center py-4 text-muted">Chọn Đội trưởng / Nhân viên ở bộ lọc, hoặc nhập số hợp đồng vào ô tìm kiếm...</td></tr>';
-                return;
-            }
-
-            const pool = viewMode === 'dacheck' ? daCheck : (viewMode === 'all' ? rows : tonDong);
-
-            const note = viewMode === 'dacheck'
-                ? `Đang xem <b>${daCheck.length}</b> hợp đồng đã có kết quả check. Chọn tối đa <b>5 dòng</b> nếu cần sửa lại kết quả.`
-                : (viewMode === 'all'
-                    ? `Đang xem toàn bộ <b>${rows.length}</b> hợp đồng trong phạm vi lọc.`
-                    : 'Đã kích hoạt sum dữ liệu theo toàn bộ bộ lọc. Bạn có thể tích chọn <b>tối đa 5 dòng</b> và nhấn "Gửi dữ liệu đã chọn".');
-
-            el['filter-warning-container'].innerHTML =
-                `<div class="alert alert-success py-1 mb-0 small fw-bold"><i class="fa-solid fa-circle-check me-1"></i> ${note}</div>`;
-
-            const limit = el['select-limit'].value;
-            renderTable(limit === 'all' ? pool : pool.slice(0, parseInt(limit, 10)));
-        }
-
-        function renderTable(rows) {
-            const tbody = el['table-body'];
-            if (el['select-all']) el['select-all'].checked = false;
-
-            if (rows.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4">Không có dữ liệu tồn đọng cần xử lý cho phạm vi đã chọn.</td></tr>';
-                return;
-            }
-
-            const parts = new Array(rows.length);
-            for (let i = 0; i < rows.length; i++) {
-                const r = rows[i], d = r._;
-                let checkHtml, xuLyHtml;
-
-                if (d.isChuaKiemTra) {
-                    checkHtml =
-                        `<select class="form-select form-select-sm check-select" data-row="${r.rowIndex}">
-                            <option value="">-- Chọn kết quả check --</option>
-                            <option value="IQC &amp; Đầu vào chuẩn">IQC &amp; Đầu vào chuẩn</option>
-                            <option value="IQC chưa đạt">IQC chưa đạt</option>
-                            <option value="Đầu vào chưa đạt">Đầu vào chưa đạt</option>
-                        </select>`;
-                    xuLyHtml = '<span class="text-muted small">-</span>';
-                } else if (d.isChuan) {
-                    checkHtml = `<span class="badge bg-success">${esc(d.check)}</span>`;
-                    xuLyHtml = '<span class="text-muted small">- (Hoàn thành)</span>';
-                } else {
-                    checkHtml = `<span class="badge bg-secondary">${esc(d.check)}</span>`;
-                    const firstOpt = d.isDauVaoChuaDat
-                        ? `<option value="ĐT bổ sung note"${d.xuLy === 'ĐT bổ sung note' ? ' selected' : ''}>ĐT bổ sung note</option>`
-                        : `<option value="Đã chuyển KTV yêu cầu update lại"${d.xuLy === 'Đã chuyển KTV yêu cầu update lại' ? ' selected' : ''}>Đã chuyển KTV yêu cầu update lại</option>`;
-                    xuLyHtml =
-                        `<select class="form-select form-select-sm xuly-select" data-row="${r.rowIndex}">
-                            <option value="">-- Chọn hướng xử lý --</option>
-                            ${firstOpt}
-                            <option value="Đã xử lý lại"${d.xuLy === 'Đã xử lý lại' ? ' selected' : ''}>Đã xử lý lại</option>
-                        </select>`;
-                }
-
-                parts[i] =
-                    `<tr data-xuly="${esc(d.xuLy)}">
-                        <td><input type="checkbox" class="row-checkbox" value="${r.rowIndex}"></td>
-                        <td>${i + 1}</td>
-                        <td>${esc(d.doitac)}</td>
-                        <td>${esc(d.doitruong)}</td>
-                        <td>${esc(d.block)}</td>
-                        <td>${esc(d.nhanvien)}</td>
-                        <td><span class="fw-bold text-primary">${esc(d.hopdong)}</span></td>
-                        <td>${esc(d.ngayFmt)}</td>
-                        <td><div class="note-cell" title="${esc(noteTitle(d.ghichu))}">${noteHtml(d.ghichu)}</div></td>
-                        <td>${checkHtml}</td>
-                        <td>${xuLyHtml}</td>
-                    </tr>`;
-            }
-            tbody.innerHTML = parts.join('');
-        }
-
-        function onCheckResultChange(sel) {
-            const rowIdx = sel.getAttribute('data-row');
-            const tdXuLy = sel.closest('tr').cells[10];
-            const val = sel.value;
-
-            const build = (a, b) =>
-                `<select class="form-select form-select-sm xuly-select" data-row="${rowIdx}">
-                    <option value="">-- Chọn hướng xử lý --</option>
-                    <option value="${a}">${a}</option>
-                    <option value="${b}">${b}</option>
-                </select>`;
-
-            if (val === 'IQC & Đầu vào chuẩn') {
-                tdXuLy.innerHTML = '<span class="text-muted small">- (Hoàn thành)</span>';
-            } else if (val === 'IQC chưa đạt') {
-                tdXuLy.innerHTML = build('Đã chuyển KTV yêu cầu update lại', 'Đã xử lý lại');
-            } else if (val === 'Đầu vào chưa đạt') {
-                tdXuLy.innerHTML = build('ĐT bổ sung note', 'Đã xử lý lại');
-            } else {
-                tdXuLy.innerHTML = '<span class="text-muted small">-</span>';
-            }
-        }
-
-        function countChecked() {
-            return el['table-body'].querySelectorAll('.row-checkbox:checked').length;
-        }
-
-        function checkMaxSelection(cb) {
-            if (cb.checked && countChecked() > 5) {
-                cb.checked = false;
-                alert("⚠️ Bạn chỉ được phép chọn tối đa 5 dòng mỗi lần gửi!");
-            }
-        }
-
-        function toggleSelectAll(master) {
-            const boxes = el['table-body'].querySelectorAll('.row-checkbox');
-            if (master.checked) {
-                if (boxes.length > 5) {
-                    alert("⚠️ Danh sách có hơn 5 dòng, không thể chọn tất cả cùng lúc (tối đa 5 dòng mỗi lần gửi)!");
-                    master.checked = false;
-                    return;
-                }
-                boxes.forEach(cb => { cb.checked = true; });
-            } else {
-                boxes.forEach(cb => { cb.checked = false; });
-            }
-        }
-
-        /* ---------- Gửi dữ liệu ---------- */
-
-        async function bulkSubmit() {
-            const btn = document.getElementById('btn-bulk-submit');
-            const f = readFilters();
-
-            if (!f.doitruong && !f.nhanvien && !searchTerm()) {
-                alert("⚠️ Vui lòng chọn cụ thể Đội trưởng hoặc Nhân viên ở bộ lọc phía trên, hoặc tìm theo số hợp đồng, trước khi gửi!");
-                return;
-            }
-
-            const checked = el['table-body'].querySelectorAll('.row-checkbox:checked');
-            if (checked.length === 0) { alert("Vui lòng tích chọn ít nhất một dòng hợp đồng để gửi!"); return; }
-            if (checked.length > 5) { alert("⚠️ Giới hạn hệ thống: Bạn chỉ được gửi tối đa 5 dòng mỗi lần!"); return; }
-
-            const updates = [];
-            for (const cb of checked) {
-                const tr = cb.closest('tr');
-                const checkSel = tr.querySelector('.check-select');
-                const xuLySel = tr.querySelector('.xuly-select');
-                const stt = tr.cells[1].textContent;
-
-                const valCheck = checkSel ? checkSel.value : tr.cells[9].textContent.trim();
-                // Hàng không có ô hướng xử lý thì giữ nguyên giá trị cũ, tránh ghi đè thành rỗng
-                const valXuLy = xuLySel ? xuLySel.value : (tr.dataset.xuly || "");
-
-                if (checkSel && !valCheck) {
-                    alert(`Vui lòng chọn kết quả check tại dòng STT ${stt}`);
-                    return;
-                }
-                // Chỉ hai kết quả này mới bắt buộc có hướng xử lý
-                const canPhaiXuLy = valCheck === 'IQC chưa đạt' || valCheck === 'Đầu vào chưa đạt';
-                if (canPhaiXuLy && !valXuLy) {
-                    alert(`Vui lòng chọn hướng xử lý tại dòng STT ${stt}`);
-                    return;
-                }
-
-                updates.push({ rowIndex: parseInt(cb.value, 10), check: valCheck, xuLy: valXuLy });
-            }
-
-            if (!confirm(`Xác nhận gửi cập nhật cho ${updates.length} dòng đã chọn?`)) return;
-
-            // Khoá nút để tránh bấm hai lần tạo hai lệnh ghi trùng
-            btn.disabled = true;
-            showAlert('<div class="alert alert-info py-2">⏳ Đang gửi dữ liệu lên hệ thống...</div>');
-
-            try {
-                const res = await fetch(WEB_APP_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action: "updateBatch", updates: updates })
-                });
-                const result = await res.json();
-                if (result.status !== 'success') throw new Error(result.message || "Lỗi cập nhật");
-
-                showAlert('<div class="alert alert-info py-2">✅ Đã ghi lên Google Sheet, đang tải lại dữ liệu...</div>');
-
-                // quiet = true để thông báo đồng bộ không đè mất kết quả gửi
-                await fetchSheetData(true);
-
-                const n = typeof result.updated === 'number' ? result.updated : updates.length;
-                showAlert(`<div class="alert alert-success py-2"><b>✅ Đã cập nhật ${n} dòng thành công.</b><div class="small mt-1">Lúc ${new Date().toLocaleTimeString()} — bảng bên dưới đã được làm mới.</div></div>`, 6000);
-            } catch (err) {
-                showAlert(`<div class="alert alert-danger py-2"><b>❌ Gửi dữ liệu thất bại.</b><div class="small mt-1">${esc(err.message)}</div></div>`, 8000);
-            } finally {
-                btn.disabled = false;
-            }
-        }
-
-        /* ---------- Report ---------- */
-
-        // Ngưỡng màu dùng chung cho biểu đồ, bảng và thẻ nhân viên
-        function pctColor(p) { return p >= 80 ? '#16a34a' : (p >= 50 ? '#d97706' : '#dc2626'); }
-
-        function chartConfig() {
-            const nameAxis = { stacked: true, grid: { display: false }, ticks: { font: { size: 11 }, autoSkip: false } };
-            const valAxis = { stacked: true, beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } } };
-
-            return {
-                type: 'bar',
-                data: {
-                    labels: [],
-                    datasets: [
-                        { label: 'Hoàn thành', data: [], backgroundColor: '#10b981', stack: 'a', borderRadius: 3 },
-                        { label: 'Chưa hoàn thành', data: [], backgroundColor: '#e2e8f0', stack: 'a', borderRadius: 3 }
-                    ]
-                },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: { duration: 250 },
-                    layout: { padding: { right: 46 } },
-                    scales: { x: valAxis, y: nameAxis },
-                    plugins: {
-                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
-                        tooltip: {
-                            callbacks: {
-                                afterBody: items => {
-                                    const c = items[0].chart.$stat[items[0].dataIndex];
-                                    return `Hoàn thành ${c.completed}/${c.total} (${c.pct}%)`;
-                                }
-                            }
-                        },
-                        // Chỉ vẽ nhãn ở đoạn trên cùng của cột chồng -> mỗi hàng đúng một con số
-                        datalabels: {
-                            display: ctx => ctx.datasetIndex === 1,
-                            anchor: 'end',
-                            align: 'right',
-                            offset: 2,
-                            formatter: (v, ctx) => ctx.chart.$stat[ctx.dataIndex].pct + '%',
-                            color: ctx => pctColor(ctx.chart.$stat[ctx.dataIndex].pct),
-                            font: { weight: 'bold', size: 11 }
-                        }
-                    }
-                }
-            };
-        }
-
-        function drawChart(instance, canvas, arr) {
-            if (typeof Chart === 'undefined') return instance;
-
-            // Chiều cao co giãn theo số dòng, tên nằm ngang nên không phải xoay chữ
-            canvas.parentElement.style.height = Math.max(300, arr.length * 26 + 96) + 'px';
-
-            if (!instance) instance = new Chart(canvas.getContext('2d'), chartConfig());
-
-            instance.$stat = arr.map(o => ({
-                total: o.total,
-                completed: o.completed,
-                pct: o.total > 0 ? Math.round((o.completed / o.total) * 100) : 0
-            }));
-            instance.data.labels = arr.map(o => o.name);
-            instance.data.datasets[0].data = arr.map(o => o.completed);
-            instance.data.datasets[1].data = arr.map(o => o.total - o.completed);
-            instance.update();
-            return instance;
-        }
-
-        function blankStat(extra) {
-            return Object.assign({ total: 0, chuaKiemTra: 0, chuan: 0, iqcChuaDat: 0, dauVaoChuaDat: 0, completed: 0, pending: 0 }, extra);
-        }
-
-        function bump(o, d) {
-            o.total++;
-            if (d.isChuaKiemTra) o.chuaKiemTra++;
-            if (d.isChuan) o.chuan++;
-            if (d.isIqcChuaDat) o.iqcChuaDat++;
-            if (d.isDauVaoChuaDat) o.dauVaoChuaDat++;
-            if (d.isCompleted) o.completed++;
-            if (d.isPending) o.pending++;
-        }
-
-        function pctBadge(pct) {
-            return pct >= 80 ? 'bg-success' : (pct >= 50 ? 'bg-warning text-dark' : 'bg-danger');
-        }
-
-        function statRows(arr) {
-            let html = '';
-            for (let i = 0; i < arr.length; i++) {
-                const o = arr[i];
-                const pct = o.total > 0 ? Math.round((o.completed / o.total) * 100) : 0;
-                html +=
-                    `<tr>
-                        <td>${i + 1}</td>
-                        <td class="fw-bold text-start">${esc(o.name)}</td>
-                        <td><span class="badge bg-secondary">${o.total}</span></td>
-                        <td><span class="text-primary fw-bold">${o.chuaKiemTra}</span></td>
-                        <td>${o.chuan}</td>
-                        <td><span class="text-danger fw-bold">${o.iqcChuaDat}</span></td>
-                        <td><span class="text-warning fw-bold">${o.dauVaoChuaDat}</span></td>
-                        <td><span class="text-success fw-bold">${o.completed}</span></td>
-                        <td><span class="badge ${pctBadge(pct)}">${pct}%</span></td>
-                    </tr>`;
-            }
-            return html;
-        }
-
-        // Dùng chung cho cả vẽ report và xuất Excel
-        // Ba nhóm kết quả check cần tách riêng để soi theo nhân viên
-        const ERR_GROUPS = [
-            { key: 'chuan', label: 'IQC & Đầu vào chuẩn', head: '#16a34a', badge: 'background:#dcfce7;color:#15803d;', test: d => d.isChuan },
-            { key: 'iqc', label: 'IQC chưa đạt', head: '#dc2626', badge: 'background:#fee2e2;color:#b91c1c;', test: d => d.isIqcChuaDat },
-            { key: 'dauvao', label: 'Đầu vào chưa đạt', head: '#d97706', badge: 'background:#fef3c7;color:#b45309;', test: d => d.isDauVaoChuaDat }
-        ];
-
-        function computeStats() {
-            const rows = getFilteredRows();
-            const leaderMap = new Map(), partnerMap = new Map(), staffMap = new Map();
-            const errMaps = ERR_GROUPS.map(() => new Map());
-
-            for (let i = 0; i < rows.length; i++) {
-                const d = rows[i]._;
-                const leader = d.doitruong || "Khác";
-                const partner = d.doitac || "Khác";
-                const staff = d.nhanvien || "Chưa xác định";
-
-                let o = leaderMap.get(leader);
-                if (!o) { o = blankStat({ name: leader }); leaderMap.set(leader, o); }
-                bump(o, d);
-
-                o = partnerMap.get(partner);
-                if (!o) { o = blankStat({ name: partner }); partnerMap.set(partner, o); }
-                bump(o, d);
-
-                o = staffMap.get(staff);
-                if (!o) { o = blankStat({ name: staff, leader: leader, partner: partner }); staffMap.set(staff, o); }
-                bump(o, d);
-
-                for (let g = 0; g < ERR_GROUPS.length; g++) {
-                    if (!ERR_GROUPS[g].test(d)) continue;
-                    const mp = errMaps[g];
-                    let e = mp.get(staff);
-                    if (!e) { e = { name: staff, leader: leader, contracts: [] }; mp.set(staff, e); }
-                    e.contracts.push(d.hopdong);
-                }
-            }
-
-            const byTotalDesc = (a, b) => b.total - a.total;
-            return {
-                rows: rows,
-                errGroups: errMaps.map(mp => [...mp.values()].sort((a, b) => b.contracts.length - a.contracts.length)),
-                lArr: [...leaderMap.values()],
-                pArr: [...partnerMap.values()],
-                staffArr: [...staffMap.values()].sort(byTotalDesc)
-            };
-        }
-
-        function renderReportContent() {
-            const st = computeStats();
-            const lArr = st.lArr, pArr = st.pArr, staffArr = st.staffArr;
-
-            // Xếp hạng theo tỷ lệ hoàn thành, biểu đồ đọc được như một bảng xếp hạng
-            const byPct = (a, b) => (b.total ? b.completed / b.total : 0) - (a.total ? a.completed / a.total : 0);
-            leaderChart = drawChart(leaderChart, el.leaderChart, [...lArr].sort(byPct));
-            partnerChart = drawChart(partnerChart, el.partnerChart, [...pArr].sort(byPct));
-
-            const byTotal = (a, b) => b.total - a.total;
-            el['report-table-leader-body'].innerHTML =
-                statRows([...lArr].sort(byTotal)) || '<tr><td colspan="9" class="text-muted">Không có dữ liệu</td></tr>';
-            el['report-table-partner-body'].innerHTML =
-                statRows([...pArr].sort(byTotal)) || '<tr><td colspan="9" class="text-muted">Không có dữ liệu</td></tr>';
-
-            renderErrorGroups(st.errGroups);
-
-            if (staffArr.length === 0) {
-                el['staff-cards-container'].innerHTML = '<div class="col-12 text-center text-muted py-4">Không có dữ liệu nhân viên phù hợp.</div>';
-                return;
-            }
-
-            const cards = new Array(staffArr.length);
-            for (let i = 0; i < staffArr.length; i++) {
-                const s = staffArr[i];
-                const pct = s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0;
-                cards[i] =
-                    `<div class="col-xl-3 col-lg-4 col-md-6 col-sm-12">
-                        <div class="product-card" data-staff="${esc(s.name)}">
-                            <span class="badge ${pctBadge(pct)} product-badge">${pct}% HT</span>
-                            <div class="staff-name text-truncate"><i class="fa-solid fa-user-tie me-1 text-primary"></i>${esc(s.name)}</div>
-                            <div class="staff-meta text-truncate">Đội: ${esc(s.leader)} | Đối tác: ${esc(s.partner)}</div>
-                            <div class="d-flex justify-content-between small text-muted mb-1">
-                                <span>Khối lượng:</span>
-                                <span class="fw-bold text-dark">${s.total} HĐ</span>
-                            </div>
-                            <div class="progress mb-2" style="height: 6px; border-radius: 4px;">
-                                <div class="progress-bar bg-success" style="width: ${pct}%"></div>
-                            </div>
-                            <div class="d-flex justify-content-between small text-muted" style="font-size: 0.7rem;">
-                                <span class="text-danger">Lỗi IQC: <b>${s.iqcChuaDat}</b></span>
-                                <span class="text-warning">Lỗi ĐV: <b>${s.dauVaoChuaDat}</b></span>
-                            </div>
-                        </div>
-                    </div>`;
-            }
-            el['staff-cards-container'].innerHTML = cards.join('');
-        }
-
-        /* ---------- Xuất Excel ---------- */
-
-        let xlsxPromise = null;
-
-        // Thư viện ~400KB, chỉ tải khi thật sự bấm nút, không làm chậm lúc mở trang
-        function loadXLSX() {
-            if (window.XLSX) return Promise.resolve();
-            if (!xlsxPromise) {
-                xlsxPromise = new Promise((resolve, reject) => {
-                    const sc = document.createElement('script');
-                    sc.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-                    sc.onload = resolve;
-                    sc.onerror = () => { xlsxPromise = null; reject(new Error('Không tải được thư viện xuất Excel. Kiểm tra kết nối mạng.')); };
-                    document.head.appendChild(sc);
-                });
-            }
-            return xlsxPromise;
-        }
-
-        function pct(o) { return o.total > 0 ? Math.round((o.completed / o.total) * 100) : 0; }
-
-        const STAT_COLS = ['Tổng khối lượng', 'Chưa kiểm tra', 'IQC & Đầu vào chuẩn', 'IQC chưa đạt', 'Đầu vào chưa đạt', 'Đã hoàn thành', 'Tỷ lệ hoàn thành (%)'];
-
-        function statCells(o) {
-            return [o.total, o.chuaKiemTra, o.chuan, o.iqcChuaDat, o.dauVaoChuaDat, o.completed, pct(o)];
-        }
-
-        function stamp() {
-            const d = new Date(), p = n => String(n).padStart(2, '0');
-            return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
-        }
-
-        async function exportExcel() {
-            const btn = document.getElementById('btn-export-excel');
-            const st = computeStats();
-
-            if (st.rows.length === 0) {
-                showAlert('<div class="alert alert-warning py-2">⚠️ Không có dữ liệu để xuất. Hãy nới bộ lọc rồi thử lại.</div>', 4000);
-                return;
-            }
-
-            btn.disabled = true;
-            const label = btn.innerHTML;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Đang tạo file...';
-
-            try {
-                await loadXLSX();
-
-                const f = readFilters();
-                const wb = XLSX.utils.book_new();
-                const add = (rows, name, widths) => {
-                    const ws = XLSX.utils.aoa_to_sheet(rows);
-                    ws['!cols'] = widths.map(w => ({ wch: w }));
-                    ws['!freeze'] = { xSplit: 0, ySplit: 1 };
-                    XLSX.utils.book_append_sheet(wb, ws, name);
-                };
-
-                // Sheet 1: ghi lại bộ lọc đang áp dụng, để mở file ra còn biết số liệu thuộc phạm vi nào
-                add([
-                    ['BÁO CÁO GIÁM SÁT IQC - CHI NHÁNH DNI'],
-                    ['Thời điểm xuất', new Date().toLocaleString('vi-VN')],
-                    [],
-                    ['BỘ LỌC ĐANG ÁP DỤNG'],
-                    ['Tháng', f.thang || 'Tất cả'],
-                    ['Vùng', f.vung || 'Tất cả'],
-                    ['Đối tác quản lý', f.doitac || 'Tất cả'],
-                    ['Đội trưởng', f.doitruong || 'Tất cả'],
-                    ['Block quản lý', f.block || 'Tất cả'],
-                    ['Nhân viên', f.nhanvien || 'Tất cả'],
-                    [],
-                    ['TỔNG HỢP'],
-                    ['Tổng số lượng', st.rows.length],
-                    ['Chưa kiểm tra', Number(el['sum-chuakiemtra'].textContent)],
-                    ['Chưa xử lý', Number(el['sum-chuaxuly'].textContent)],
-                    ['Đã hoàn thành', Number(el['sum-hoanthanh'].textContent)]
-                ], 'Tổng hợp', [26, 34]);
-
-                const byTotal = (a, b) => b.total - a.total;
-
-                add([['STT', 'Đội trưởng', ...STAT_COLS]].concat(
-                    [...st.lArr].sort(byTotal).map((o, i) => [i + 1, o.name, ...statCells(o)])
-                ), 'Đội trưởng', [6, 26, 15, 14, 20, 14, 18, 14, 18]);
-
-                add([['STT', 'Đối tác', ...STAT_COLS]].concat(
-                    [...st.pArr].sort(byTotal).map((o, i) => [i + 1, o.name, ...statCells(o)])
-                ), 'Đối tác', [6, 20, 15, 14, 20, 14, 18, 14, 18]);
-
-                add([['STT', 'Nhân viên', 'Đội trưởng', 'Đối tác', ...STAT_COLS]].concat(
-                    st.staffArr.map((o, i) => [i + 1, o.name, o.leader, o.partner, ...statCells(o)])
-                ), 'Nhân viên', [6, 24, 24, 20, 15, 14, 20, 14, 18, 14, 18]);
-
-                // Sheet chi tiết từng hợp đồng
-                // Ghi chú chứa thông tin liên hệ khách hàng nên không đưa vào file xuất
-                const detail = [['STT', 'Vùng', 'Đối tác', 'Đội trưởng', 'Block', 'Nhân viên', 'Số hợp đồng', 'Ngày PTC', 'Kết quả check', 'Hướng xử lý', 'Trạng thái']];
-                for (let i = 0; i < st.rows.length; i++) {
-                    const d = st.rows[i]._;
-                    detail.push([i + 1, d.vung, d.doitac, d.doitruong, d.block, d.nhanvien, d.hopdong, d.ngayFmt,
-                        d.check, d.xuLy,
-                        d.isCompleted ? 'Hoàn thành' : (d.isChuaKiemTra ? 'Chưa kiểm tra' : 'Chưa xử lý')]);
-                }
-                add(detail, 'Chi tiết hợp đồng', [6, 14, 18, 22, 14, 22, 16, 18, 24, 30, 15]);
-
-                XLSX.writeFile(wb, `BaoCao_IQC_DNI_${stamp()}.xlsx`);
-                showAlert(`<div class="alert alert-success py-2"><b>✅ Đã xuất file Excel.</b><div class="small mt-1">${st.rows.length} hợp đồng, 5 sheet. Kiểm tra thư mục Tải xuống.</div></div>`, 6000);
-
-            } catch (err) {
-                showAlert(`<div class="alert alert-danger py-2"><b>❌ Xuất Excel thất bại.</b><div class="small mt-1">${esc(err.message)}</div></div>`, 8000);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = label;
-            }
-        }
-
-        function renderErrorGroups(groups) {
-            const cols = new Array(ERR_GROUPS.length);
-
-            for (let g = 0; g < ERR_GROUPS.length; g++) {
-                const cfg = ERR_GROUPS[g], list = groups[g];
-                const total = list.reduce((a, e) => a + e.contracts.length, 0);
-
-                let body;
-                if (list.length === 0) {
-                    body = '<div class="text-center text-muted small py-4">Không có dữ liệu</div>';
-                } else {
-                    const rowsHtml = new Array(list.length);
-                    for (let i = 0; i < list.length; i++) {
-                        const e = list[i];
-                        // Tooltip liệt kê số hợp đồng, cắt bớt nếu quá dài kẻo tràn màn hình
-                        const show = e.contracts.slice(0, 40);
-                        let tip = `${e.name} - ${cfg.label} (${e.contracts.length} hợp đồng)\n${show.join(', ')}`;
-                        if (e.contracts.length > show.length) tip += `\n... và ${e.contracts.length - show.length} hợp đồng nữa`;
-
-                        rowsHtml[i] =
-                            `<div class="err-row" title="${esc(tip)}">
-                                <div class="err-name"><b>${esc(e.name)}</b><span>${esc(e.leader)}</span></div>
-                                <span class="err-count" style="${cfg.badge}">${e.contracts.length}</span>
-                            </div>`;
-                    }
-                    body = rowsHtml.join('');
-                }
-
-                cols[g] =
-                    `<div class="col-lg-4">
-                        <div class="err-group">
-                            <div class="err-group-head" style="background:${cfg.head}">
-                                <span>${cfg.label}</span>
-                                <span>${total} HĐ / ${list.length} NV</span>
-                            </div>
-                            <div class="err-group-body">${body}</div>
-                        </div>
-                    </div>`;
-            }
-
-            el['error-groups'].innerHTML = cols.join('');
-        }
-
-        function showStaffDetailModal(staffName) {
-            el['modal-staff-title'].innerHTML = `<i class="fa-solid fa-user-gear me-2"></i>Chi tiết công việc: ${esc(staffName)}`;
-            const rows = getFilteredRows().filter(r => r._.nhanvien === staffName);
-
-            let body = '';
-            if (rows.length === 0) {
-                body = '<tr><td colspan="9" class="text-center text-muted">Không có dữ liệu chi tiết.</td></tr>';
-            } else {
-                for (let i = 0; i < rows.length; i++) {
-                    const d = rows[i]._;
-                    const badge = d.isCompleted
-                        ? '<span class="badge bg-success">Hoàn thành</span>'
-                        : (d.isChuaKiemTra ? '<span class="badge bg-primary">Chưa kiểm tra</span>' : '<span class="badge bg-warning text-dark">Chưa xử lý</span>');
-                    body +=
-                        `<tr>
-                            <td>${i + 1}</td>
-                            <td>${esc(d.doitruong)}</td>
-                            <td>${esc(d.doitac)}</td>
-                            <td>${esc(d.block)}</td>
-                            <td class="fw-bold text-primary">${esc(d.hopdong)}</td>
-                            <td>${esc(d.ngayFmt)}</td>
-                            <td>${esc(d.check) || '-'}</td>
-                            <td>${esc(d.xuLy) || '-'}</td>
-                            <td>${badge}</td>
-                        </tr>`;
-                }
-            }
-
-            el['modal-staff-body'].innerHTML =
-                `<div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
-                    <table class="table table-sm table-striped align-middle small text-center">
-                        <thead><tr>
-                            <th>STT</th><th>Đội trưởng</th><th>Đối tác</th><th>Block</th>
-                            <th>Số HĐ</th><th>Ngày PTC</th><th>Kết quả Check</th><th>Hướng xử lý</th><th>Trạng thái</th>
-                        </tr></thead>
-                        <tbody>${body}</tbody>
-                    </table>
-                </div>`;
-
-            bootstrap.Modal.getOrCreateInstance(el['staffDetailModal']).show();
-        }
-
-        /* ---------- Banner chặng nước rút cuối năm ---------- */
-
-        function renderSprint() {
-            const now = new Date();
-            const y = now.getFullYear();
-            const start = new Date(y, 9, 1);              // 01/10
-            const end = new Date(y, 11, 31, 23, 59, 59);  // 31/12
-            const DAY = 86400000;
-
-            const left = Math.max(0, Math.ceil((end - now) / DAY));
-            const total = Math.round((end - start) / DAY) + 1;
-
-            document.getElementById('sprint-num').textContent = left;
-            document.getElementById('sprint-deadline').textContent = `còn lại đến 31/12/${y}`;
-
-            if (now < start) {
-                const toStart = Math.ceil((start - now) / DAY);
-                document.getElementById('sprint-tag').textContent = 'SẮP VÀO CHẶNG NƯỚC RÚT';
-                document.getElementById('sprint-sub').textContent =
-                    `Còn ${toStart} ngày nữa bước vào 3 tháng cuối năm. Rà soát tồn đọng ngay từ bây giờ để vào chặng với nền sạch.`;
-                document.getElementById('sprint-fill').style.width = '0%';
-                return;
-            }
-
-            const passed = Math.min(total, Math.max(0, Math.round((now - start) / DAY) + 1));
-            const pct = Math.round((passed / total) * 100);
-            document.getElementById('sprint-sub').textContent =
-                `Đã đi ${passed}/${total} ngày của chặng (${pct}%). Mỗi hợp đồng xử lý dứt điểm hôm nay là một bước gần đích hơn.`;
-            document.getElementById('sprint-fill').style.width = pct + '%';
-        }
-
-        /* ---------- Khởi tạo ---------- */
-
-        function init() {
-            cacheDom();
-            if (typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined') {
-                Chart.register(ChartDataLabels);
-            }
-
-            // Uỷ quyền sự kiện: gắn 3 listener cho cả bảng thay vì mỗi dòng một handler
-            el['table-body'].addEventListener('change', e => {
-                if (e.target.classList.contains('check-select')) onCheckResultChange(e.target);
-            });
-            el['table-body'].addEventListener('click', e => {
-                if (e.target.classList.contains('row-checkbox')) checkMaxSelection(e.target);
-            });
-            // Gõ tới đâu lọc tới đó, chờ 220ms để không lọc lại sau mỗi phím
-            let searchTimer = null;
-            el['search-hopdong'].addEventListener('input', () => {
-                clearTimeout(searchTimer);
-                searchTimer = setTimeout(filterData, 220);
-            });
-
-            el['staff-cards-container'].addEventListener('click', e => {
-                const card = e.target.closest('.product-card');
-                if (card) showStaffDetailModal(card.dataset.staff);
-            });
-
-            renderSprint();
-
-            // Vẽ ngay từ cache để người dùng thấy nội dung tức thì
-            loadFromCache();
-            fetchSheetData();
-        }
-
-        // Xuất hàm cho các nút onclick trong HTML
-        Object.assign(window, {
-            switchTab, fetchSheetData, resetAllFilters, onGlobalFilterChange,
-            filterData, bulkSubmit, toggleSelectAll, exportExcel, setView
-        });
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', init);
-        } else {
-            init();
-        }
-    })();
-    </script>
+    <div class="actions" id="actions">
+      <a class="btn btn-go" href="https://baotri.fteldni.com" rel="noopener">🚀 Qua baotri.fteldni.com</a>
+      <button class="btn btn-run" id="btn-run" type="button">🙅 Tôi muốn dùng tiếp bản miễn phí</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📋 Bảng giá dịch vụ (bản tham khảo… cho vui)</h2>
+    <p class="note">Chính sách giá chính thức xin vui lòng xem tại hệ thống mới. Bảng dưới đây chỉ nhằm mục đích làm anh em bớt buồn.</p>
+    <div class="plans">
+      <div class="plan dead">
+        <div class="name">Gói Miễn Phí</div>
+        <div class="price">0đ</div>
+        <ul>
+          <li>Đã hết hạn, như tình yêu tuổi học trò</li>
+          <li>Ra đi lúc 23:59 ngày 09/10/2026</li>
+          <li>Không bảo hành, không đổi trả</li>
+        </ul>
+      </div>
+      <div class="plan">
+        <div class="name">Gói Cà Phê Sữa Đá</div>
+        <div class="price">1 ly / ngày</div>
+        <ul>
+          <li>Server tỉnh táo đến 11h trưa</li>
+          <li>Biểu đồ chạy nhanh hơn 3%</li>
+          <li>Ít đá thì được thêm 1 bộ lọc</li>
+        </ul>
+      </div>
+      <div class="plan hot">
+        <span class="ribbon">ĐƯỢC YÊU THÍCH NHẤT</span>
+        <div class="name">Gói Xử Lý Dứt Điểm</div>
+        <div class="price">0 hợp đồng tồn</div>
+        <ul>
+          <li>Thanh toán bằng KTV úp ảnh đủ 6 hình</li>
+          <li>Tỷ lệ hoàn thành xanh lè cả bảng</li>
+          <li>Đội trưởng được khen, cả đội vui</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card faq">
+    <h2>🤔 Câu hỏi thường gặp</h2>
+    <details>
+      <summary>Ủa sao tự nhiên lại chuyển?</summary>
+      <p>Server nói nó đã cố hết sức rồi. Google Sheet thì bảo dạo này ai cũng bấm "Tải lại" liên tục, nó mệt.</p>
+    </details>
+    <details>
+      <summary>Từ ngày nào phải qua trang mới?</summary>
+      <p>Từ <b>10/10/2026</b>. Phần này là thật 100%, không pha nước.</p>
+    </details>
+    <details>
+      <summary>Địa chỉ mới là gì, nói lại lần nữa được không?</summary>
+      <p><b>baotri.fteldni.com</b> — gõ đúng chính tả giúp em, gõ sai là lạc qua chỗ khác đó.</p>
+    </details>
+    <details>
+      <summary>Tôi lưu bookmark trang cũ rồi thì sao?</summary>
+      <p>Anh/chị sửa bookmark giùm em. Trang cũ giờ chỉ còn mỗi tờ thông báo này đứng gác cổng thôi.</p>
+    </details>
+    <details>
+      <summary>Có cách nào giữ bản miễn phí không?</summary>
+      <p>Thử bấm cái nút xám ở trên xem. Nếu bấm được thì… em cũng chịu.</p>
+    </details>
+  </div>
+
+  <footer>Ban quản trị IQC · Chi nhánh DNI — kính báo (và hơi buồn) 🥲</footer>
+</div>
+
+<script>
+(function () {
+  // Thanh "nạp tiền" kẹt mãi ở 99%
+  var pctEl = document.getElementById('pct'), p = 0;
+  var t = setInterval(function () {
+    p = Math.min(99, p + Math.ceil((99 - p) / 8));
+    pctEl.textContent = p + '%';
+    if (p >= 99) { clearInterval(t); pctEl.textContent = '99% (thiếu 1% tiền điện)'; }
+  }, 120);
+
+  // Nút "dùng miễn phí" chạy trốn, sau vài lần thì đầu hàng
+  var btn = document.getElementById('btn-run'), tries = 0;
+  var quotes = [
+    '🙅 Không bắt được đâu',
+    '🏃 Hụt rồi nha',
+    '😜 Server không đồng ý',
+    '💨 Bản miễn phí đã đi xa',
+    '😮‍💨 Thôi mệt quá…'
+  ];
+
+  function flee(e) {
+    if (btn.dataset.done) return;
+    if (e && e.type === 'touchstart') e.preventDefault();
+    tries++;
+    if (tries > quotes.length) {
+      btn.dataset.done = '1';
+      btn.classList.remove('loose');
+      btn.style.left = btn.style.top = '';
+      btn.textContent = '😅 Thôi được rồi, mời qua baotri';
+      btn.className = 'btn btn-go';
+      btn.onclick = function () { location.href = 'https://baotri.fteldni.com'; };
+      document.getElementById('actions').appendChild(btn);
+      return;
+    }
+    btn.classList.add('loose');
+    btn.textContent = quotes[tries - 1];
+    var w = btn.offsetWidth, h = btn.offsetHeight;
+    var x = Math.random() * Math.max(0, window.innerWidth - w - 16) + 8;
+    var y = Math.random() * Math.max(0, window.innerHeight - h - 16) + 8;
+    btn.style.left = x + 'px';
+    btn.style.top = y + 'px';
+  }
+
+  btn.addEventListener('mouseenter', flee);
+  btn.addEventListener('touchstart', flee, { passive: false });
+  btn.addEventListener('click', flee);
+})();
+</script>
 </body>
 </html>
